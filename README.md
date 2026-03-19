@@ -1,2 +1,2 @@
 # dearpenny
-new baby tracker app
+tracker app for new baby
