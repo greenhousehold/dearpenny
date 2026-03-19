@@ -197,10 +197,10 @@ function GoogleSheetsCard({state, update, T}) {
 
   const connect = () => {
     if (!clientId.trim()) { setStatus("noclientid"); return; }
-    const origin = window.location.origin;
+    const redirectUri = "https://greenhousehold.github.io/dearpenny/oauth.html";
     const params = new URLSearchParams({
       client_id: clientId,
-      redirect_uri: `${origin}/oauth.html`,
+      redirect_uri: redirectUri,
       response_type: "token",
       scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",
     });
