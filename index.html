@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#1e1e1e"/>
+<title>DearPenny</title>
+<link rel="manifest" href="manifest.json"/>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:#1e1e1e;font-family:-apple-system,'Adobe Clean',system-ui,sans-serif;overscroll-behavior:none;}
+  input,button,select{font-family:inherit;}
+  input::placeholder{opacity:0.5;}
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback,useRef}=React;
+
+const S2={
+  dark:{bgBase:"#1e1e1e",bgLayer1:"#2c2c2c",bgLayer2:"#3a3a3a",bgLayer3:"#444",textPrimary:"#ffffff",textSecondary:"#c0c0c0",textDisabled:"#6a6a6a",borderLight:"rgba(255,255,255,0.12)",borderMid:"rgba(255,255,255,0.2)",accentBg:"#2680eb",accentText:"#ffffff",positiveBg:"#2d9d78",positiveText:"#ffffff",noticeBg:"#e68619",noticeText:"#ffffff",negativeBg:"#e34850",negativeText:"#ffffff",tagBg:"rgba(255,255,255,0.1)",tagText:"#d0d0d0",inputBg:"#2c2c2c",inputBorder:"rgba(255,255,255,0.25)",subtleBg:"rgba(255,255,255,0.06)",selectedBg:"rgba(70,130,220,0.25)",chartLine:"#4b9cf5",statusBar:"#2c2c2c"},
+  light:{bgBase:"#f8f8f8",bgLayer1:"#ffffff",bgLayer2:"#f3f3f3",bgLayer3:"#e8e8e8",textPrimary:"#1a1a1a",textSecondary:"#555",textDisabled:"#aaa",borderLight:"rgba(0,0,0,0.1)",borderMid:"rgba(0,0,0,0.18)",accentBg:"#2680eb",accentText:"#ffffff",positiveBg:"#268e6c",positiveText:"#ffffff",noticeBg:"#cb6f10",noticeText:"#ffffff",negativeBg:"#d7373f",negativeText:"#ffffff",tagBg:"rgba(0,0,0,0.06)",tagText:"#444",inputBg:"#ffffff",inputBorder:"rgba(0,0,0,0.25)",subtleBg:"rgba(0,0,0,0.04)",selectedBg:"rgba(38,128,235,0.12)",chartLine:"#2680eb",statusBar:"#ffffff"}
+};
+const SP={radiusSm:"8px",radiusMd:"12px",radiusLg:"16px",radiusPill:"999px",fontSm:"13px",fontMd:"15px",fontLg:"17px",fontXl:"22px",fontLabel:"11px",weightReg:400,weightMed:500,weightBold:700,touchH:"44px"};
+
+const DEFAULT_WIDGET_ORDER=["status","monitor","diaper","reminder","sync","feedings"];
+const NAV=[
+  {id:"dashboard",label:"Home",icon:"⊞"},{id:"feeding",label:"Feed",icon:"⊕"},
+  {id:"sleep",label:"Sleep",icon:"◑"},{id:"camera",label:"Camera",icon:"⦿"},
+  {id:"medicine",label:"Meds",icon:"⚕"},{id:"symptoms",label:"Health",icon:"♥"},
+  {id:"growth",label:"Growth",icon:"↑"},{id:"history",label:"Chart",icon:"◎"},
+  {id:"doctor",label:"Doctor",icon:"✚"},{id:"contraction",label:"Timer",icon:"⏱"},
+];
+const SOLID_FOODS={"Fruits":["Apple","Banana","Pear","Mango","Peach","Avocado","Blueberry","Strawberry"],"Veggies":["Carrot","Sweet potato","Peas","Butternut squash","Broccoli","Spinach","Zucchini"],"Grains":["Rice cereal","Oatmeal","Barley cereal","Puffs","Toast"],"Protein":["Chicken","Turkey","Lentils","Tofu","Egg yolk","Salmon"],"Dairy":["Yogurt","Cheese","Cottage cheese"]};
+const WIDGET_META={status:{label:"Quick Status",icon:"⊞"},monitor:{label:"Baby Monitor",icon:"⦿"},diaper:{label:"Diaper Log",icon:"◈"},reminder:{label:"Feed Reminder",icon:"⏰"},sync:{label:"Shared Sync",icon:"🔗"},feedings:{label:"Recent Feedings",icon:"⊕"}};
+const MOTION_LEVELS={none:{label:"No motion"},stirring:{label:"Stirring"},active:{label:"Active"},awake:{label:"Awake"}};
+const getMotionLevel=s=>s>=75?"awake":s>=50?"active":s>=20?"stirring":"none";
+const motionTagColor=l=>({none:"positive",stirring:"notice",active:"notice",awake:"negative"}[l]||"positive");
+const motionColor=(l,T)=>({none:T.positiveBg,stirring:T.noticeBg,active:T.noticeBg,awake:T.negativeBg}[l]||T.positiveBg);
+const COMMON_MEDS=["Paracetamol (Calpol)","Ibuprofen","Vitamin D drops","Vitamin K","Antibiotic","Antihistamine","Saline drops","Gripe water","Probiotic","Other"];
+const DOSE_UNITS=["ml","mg","drops","tablet","sachet","spray"];
+const VAX_SCHEDULE=[
+  {id:"hepb_1",name:"Hepatitis B",dose:"1st",ageLabel:"At birth",ageWeeks:0,desc:"Protects against a serious liver infection caused by the hepatitis B virus."},
+  {id:"hepb_2",name:"Hepatitis B",dose:"2nd",ageLabel:"1–2 months",ageWeeks:6,desc:"Second dose to build lasting protection against hepatitis B liver disease."},
+  {id:"dtap_1",name:"DTaP",dose:"1st",ageLabel:"2 months",ageWeeks:8,desc:"Protects against diphtheria, tetanus (lockjaw), and whooping cough (pertussis)."},
+  {id:"hib_1",name:"Hib",dose:"1st",ageLabel:"2 months",ageWeeks:8,desc:"Guards against Haemophilus influenzae type b, which can cause meningitis and pneumonia."},
+  {id:"ipv_1",name:"Polio (IPV)",dose:"1st",ageLabel:"2 months",ageWeeks:8,desc:"Protects against polio, a virus that can cause permanent paralysis."},
+  {id:"pcv_1",name:"Pneumococcal (PCV)",dose:"1st",ageLabel:"2 months",ageWeeks:8,desc:"Protects against pneumococcal bacteria that cause pneumonia, meningitis, and ear infections."},
+  {id:"rv_1",name:"Rotavirus",dose:"1st",ageLabel:"2 months",ageWeeks:8,desc:"Prevents rotavirus, the leading cause of severe diarrhoea and vomiting in babies."},
+  {id:"dtap_2",name:"DTaP",dose:"2nd",ageLabel:"4 months",ageWeeks:16,desc:"Boosts protection against diphtheria, tetanus, and whooping cough."},
+  {id:"hib_2",name:"Hib",dose:"2nd",ageLabel:"4 months",ageWeeks:16,desc:"Continues building immunity against Hib meningitis and other serious infections."},
+  {id:"ipv_2",name:"Polio (IPV)",dose:"2nd",ageLabel:"4 months",ageWeeks:16,desc:"Strengthens protection against the poliovirus."},
+  {id:"pcv_2",name:"Pneumococcal (PCV)",dose:"2nd",ageLabel:"4 months",ageWeeks:16,desc:"Builds on first dose protection against pneumococcal disease."},
+  {id:"rv_2",name:"Rotavirus",dose:"2nd",ageLabel:"4 months",ageWeeks:16,desc:"Completes the rotavirus series to prevent severe stomach illness."},
+  {id:"hepb_3",name:"Hepatitis B",dose:"3rd",ageLabel:"6 months",ageWeeks:24,desc:"Final dose to complete long-term protection against hepatitis B."},
+  {id:"dtap_3",name:"DTaP",dose:"3rd",ageLabel:"6 months",ageWeeks:24,desc:"Third dose to maintain strong protection against whooping cough and tetanus."},
+  {id:"hib_3",name:"Hib",dose:"3rd",ageLabel:"6 months",ageWeeks:24,desc:"Third dose to ensure continued protection against Hib bacterial infections."},
+  {id:"ipv_3",name:"Polio (IPV)",dose:"3rd",ageLabel:"6 months",ageWeeks:24,desc:"Third dose for sustained immunity against polio."},
+  {id:"pcv_3",name:"Pneumococcal (PCV)",dose:"3rd",ageLabel:"6 months",ageWeeks:24,desc:"Third dose to reinforce defence against pneumococcal bacteria."},
+  {id:"flu_1",name:"Influenza",dose:"Annual",ageLabel:"6+ months",ageWeeks:26,desc:"Yearly vaccine to protect against seasonal flu strains that can be serious in infants."},
+  {id:"mmr_1",name:"MMR",dose:"1st",ageLabel:"12–15 months",ageWeeks:52,desc:"Protects against measles, mumps, and rubella — all highly contagious viral diseases."},
+  {id:"varicella_1",name:"Varicella",dose:"1st",ageLabel:"12–15 months",ageWeeks:52,desc:"Prevents chickenpox, which can cause serious complications in young children."},
+  {id:"hepa_1",name:"Hepatitis A",dose:"1st",ageLabel:"12–23 months",ageWeeks:52,desc:"Protects against hepatitis A, a contagious liver disease spread through contaminated food or water."},
+  {id:"pcv_4",name:"Pneumococcal (PCV)",dose:"4th",ageLabel:"12–15 months",ageWeeks:52,desc:"Booster dose to maintain long-term protection against pneumococcal disease."},
+  {id:"dtap_4",name:"DTaP",dose:"4th",ageLabel:"15–18 months",ageWeeks:65,desc:"Booster to maintain strong immunity against diphtheria, tetanus, and whooping cough."},
+  {id:"hib_4",name:"Hib",dose:"4th",ageLabel:"15–18 months",ageWeeks:65,desc:"Final booster to complete full protection against Hib bacterial disease."},
+  {id:"hepa_2",name:"Hepatitis A",dose:"2nd",ageLabel:"18–23 months",ageWeeks:78,desc:"Completes the two-dose series for long-lasting hepatitis A protection."},
+  {id:"mmr_2",name:"MMR",dose:"2nd",ageLabel:"4–6 years",ageWeeks:208,desc:"Booster to ensure full immunity against measles, mumps, and rubella before school."},
+  {id:"varicella_2",name:"Varicella",dose:"2nd",ageLabel:"4–6 years",ageWeeks:208,desc:"Second dose to ensure lasting protection against chickenpox."},
+  {id:"dtap_5",name:"DTaP",dose:"5th",ageLabel:"4–6 years",ageWeeks:208,desc:"Final childhood booster against diphtheria, tetanus, and whooping cough before school."},
+  {id:"ipv_4",name:"Polio (IPV)",dose:"4th",ageLabel:"4–6 years",ageWeeks:208,desc:"Final booster to maintain lifelong protection against polio."},
+];
+function getBabyAgeWeeks(dob){if(!dob)return null;const d=new Date(dob);if(isNaN(d))return null;return Math.floor((Date.now()-d.getTime())/(7*24*3600*1000));}
+
+const defaultState={babyName:"Baby Girl",babyFullName:"",babyDOB:"",babyBirthWeight:"",feeding:[],diapers:[],symptoms:[],growth:[],milestones:[],sleep:[],reminderInterval:180,reminderEnabled:false,theme:"dark",sharedRoomId:null,lastSyncTs:null,contractions:[],cameraConfig:{},motionConfig:{sensitivity:40,autoEndSleep:true,notifyBoth:true,stirringAlert:false,awakeAlert:true,enabled:false},widgetOrder:[...DEFAULT_WIDGET_ORDER],doses:[],vaccDone:{},vaccSkipped:{},vaccDelayed:{},gClientId:"",gAccessToken:"",gSheetId:""};
+function loadState(){try{const s=localStorage.getItem("dear_penny_v1");const d=s?{...defaultState,...JSON.parse(s)}:{...defaultState};if(!d.widgetOrder||!d.widgetOrder.length)d.widgetOrder=[...DEFAULT_WIDGET_ORDER];return d;}catch{return{...defaultState};}}
+function saveState(s){try{localStorage.setItem("dear_penny_v1",JSON.stringify(s));}catch{}}
+
+const fmtTime=iso=>new Date(iso).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+const fmtDate=iso=>new Date(iso).toLocaleDateString([],{month:"short",day:"numeric"});
+const fmtDateFull=iso=>new Date(iso).toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"});
+const nowISO=()=>new Date().toISOString();
+const minsAgo=iso=>Math.round((Date.now()-new Date(iso))/60000);
+const hoursAgo=iso=>(minsAgo(iso)/60).toFixed(1);
+const durationMins=(s,e)=>Math.round((new Date(e)-new Date(s))/60000);
+const fmtDur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;
+const fmtSecs=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+
+// ── Shared UI ──────────────────────────────────────────────────
+function Card({children,T,style}){return <div style={{background:T.bgLayer1,border:`1px solid ${T.borderLight}`,borderRadius:SP.radiusLg,padding:"14px 16px",marginTop:12,...style}}>{children}</div>;}
+function SL({children,T}){return <div style={{fontSize:SP.fontLabel,fontWeight:SP.weightBold,color:T.textSecondary,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:22,marginBottom:6}}>{children}</div>;}
+function Btn({onClick,children,variant="accent",size="md",full,T,disabled}){
+  const v={accent:{bg:T.accentBg,color:T.accentText,border:"none"},positive:{bg:T.positiveBg,color:T.positiveText,border:"none"},negative:{bg:T.negativeBg,color:T.negativeText,border:"none"},notice:{bg:T.noticeBg,color:T.noticeText,border:"none"},secondary:{bg:"transparent",color:T.textPrimary,border:`1px solid ${T.borderMid}`},quiet:{bg:T.subtleBg,color:T.textSecondary,border:"none"}}[variant]||{bg:T.accentBg,color:T.accentText,border:"none"};
+  return <button onClick={onClick} disabled={disabled} style={{background:v.bg,color:v.color,border:v.border,borderRadius:SP.radiusPill,padding:size==="sm"?"6px 14px":"10px 20px",fontSize:size==="sm"?SP.fontSm:SP.fontMd,fontWeight:SP.weightBold,height:size==="sm"?"32px":SP.touchH,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,width:full?"100%":"auto",lineHeight:1}}>{children}</button>;
+}
+function Tag({children,T,color}){
+  const c={positive:{bg:"rgba(38,158,120,0.15)",c:T.positiveBg},negative:{bg:"rgba(215,55,63,0.15)",c:T.negativeBg},notice:{bg:"rgba(203,111,16,0.15)",c:T.noticeBg},info:{bg:"rgba(38,128,235,0.15)",c:T.accentBg},accent:{bg:T.selectedBg,c:T.accentBg}}[color]||{bg:T.tagBg,c:T.tagText};
+  return <span style={{display:"inline-flex",alignItems:"center",padding:"3px 10px",borderRadius:SP.radiusPill,fontSize:"12px",fontWeight:SP.weightMed,background:c.bg,color:c.c,border:`1px solid ${c.c}22`}}>{children}</span>;
+}
+function StatCard({label,value,sub,color,T}){
+  const ac={blue:T.accentBg,green:T.positiveBg,amber:T.noticeBg,red:T.negativeBg,purple:"#9b59b6",gray:T.textSecondary}[color]||T.accentBg;
+  return <div style={{background:T.bgLayer2,borderRadius:SP.radiusMd,padding:"14px",border:`1px solid ${T.borderLight}`}}><div style={{fontSize:SP.fontLabel,color:ac,fontWeight:SP.weightBold,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</div><div style={{fontSize:SP.fontXl,fontWeight:SP.weightBold,color:T.textPrimary,lineHeight:1.1}}>{value}</div>{sub&&<div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:4}}>{sub}</div>}</div>;
+}
+function Inp({value,onChange,placeholder,type="text",step,style,T}){
+  return <input value={value} onChange={onChange} type={type} step={step} placeholder={placeholder} style={{background:T.inputBg,border:`1px solid ${T.inputBorder}`,borderRadius:SP.radiusMd,padding:"10px 12px",fontSize:SP.fontMd,color:T.textPrimary,width:"100%",boxSizing:"border-box",height:SP.touchH,outline:"none",...style}}/>;
+}
+function Segmented({options,value,onChange,T}){
+  return <div style={{display:"flex",background:T.bgLayer2,borderRadius:SP.radiusPill,padding:"3px",gap:"2px",border:`1px solid ${T.borderLight}`}}>{options.map(({id,label})=><button key={id} onClick={()=>onChange(id)} style={{flex:1,padding:"7px 12px",borderRadius:SP.radiusPill,border:"none",cursor:"pointer",background:value===id?T.accentBg:"transparent",color:value===id?T.accentText:T.textSecondary,fontSize:SP.fontSm,fontWeight:SP.weightBold}}>{label}</button>)}</div>;
+}
+function Chip({label,selected,onClick,T,color}){
+  const ac={negative:T.negativeBg,positive:T.positiveBg,notice:T.noticeBg}[color]||T.accentBg;
+  return <button onClick={onClick} style={{padding:"7px 14px",borderRadius:SP.radiusPill,cursor:"pointer",fontSize:SP.fontSm,fontWeight:selected?SP.weightBold:SP.weightReg,background:selected?`${ac}22`:T.subtleBg,color:selected?ac:T.textSecondary,border:selected?`1.5px solid ${ac}`:`1px solid ${T.borderLight}`}}>{selected?"✓ ":""}{label}</button>;
+}
+
+// ── Google Sheets Sync ─────────────────────────────────────────
+async function gSheetsSync(state, accessToken) {
+  const headers = {"Authorization":`Bearer ${accessToken}`,"Content-Type":"application/json"};
+  let sheetId = state.gSheetId;
+
+  // Create sheet if needed
+  if (!sheetId) {
+    const res = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+      method:"POST", headers,
+      body: JSON.stringify({properties:{title:"DearPenny Tracker"},sheets:[
+        {properties:{title:"Feeding"}},{properties:{title:"Sleep"}},
+        {properties:{title:"Symptoms"}},{properties:{title:"Growth"}},
+        {properties:{title:"Diapers"}},{properties:{title:"Doses"}},
+      ]})
+    });
+    const data = await res.json();
+    sheetId = data.spreadsheetId;
+  }
+
+  // Build batch update data
+  const rows = (arr, mapper) => arr.map(mapper);
+  const feedRows = [["Date","Time","Type","Side","Amount","Duration","Note"], ...rows(state.feeding, f=>[fmtDate(f.ts),fmtTime(f.ts),f.type||"",f.side||"",f.amount||"",f.duration||"",f.note||""])];
+  const sleepRows = [["Date","Start","End","Duration","Note"], ...rows(state.sleep.filter(s=>s.end), s=>[fmtDate(s.ts),fmtTime(s.ts),fmtTime(s.end),fmtDur(durationMins(s.ts,s.end)),s.note||""])];
+  const symRows = [["Date","Time","Type","Severity","Temp","Note"], ...rows(state.symptoms, s=>[fmtDate(s.ts),fmtTime(s.ts),s.type,s.severity,s.temp||"",s.note||""])];
+  const growRows = [["Date","Weight","Height","Head","Note"], ...rows(state.growth, g=>[fmtDate(g.ts),g.weight||"",g.height||"",g.head||"",g.note||""])];
+  const diaperRows = [["Date","Time","Type"], ...rows(state.diapers, d=>[fmtDate(d.ts),fmtTime(d.ts),d.type])];
+  const doseRows = [["Date","Time","Medicine","Amount","Unit","Reason","Given By"], ...rows(state.doses||[], d=>[fmtDate(d.ts),fmtTime(d.ts),d.name,d.amount,d.unit,d.reason||"",d.givenBy||""])];
+
+  const sheetData = [
+    {range:"Feeding!A1", values:feedRows},
+    {range:"Sleep!A1",   values:sleepRows},
+    {range:"Symptoms!A1",values:symRows},
+    {range:"Growth!A1",  values:growRows},
+    {range:"Diapers!A1", values:diaperRows},
+    {range:"Doses!A1",   values:doseRows},
+  ];
+
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
+    method:"POST", headers,
+    body: JSON.stringify({valueInputOption:"RAW", data:sheetData})
+  });
+
+  return {sheetId, url:`https://docs.google.com/spreadsheets/d/${sheetId}`};
+}
+
+function GoogleSheetsCard({state, update, T}) {
+  const [clientId, setClientId] = useState(state.gClientId||"");
+  const [status, setStatus] = useState("idle");
+  const [sheetUrl, setSheetUrl] = useState(state.gSheetId ? `https://docs.google.com/spreadsheets/d/${state.gSheetId}` : "");
+  const [syncing, setSyncing] = useState(false);
+
+  // Listen for OAuth token from popup
+  useEffect(() => {
+    const handler = async (e) => {
+      if (e.data?.type === "DEARPENNY_OAUTH" && e.data.accessToken) {
+        const token = e.data.accessToken;
+        update("gAccessToken", token);
+        setStatus("syncing");
+        setSyncing(true);
+        try {
+          const {sheetId, url} = await gSheetsSync({...state, gClientId: clientId}, token);
+          update("gSheetId", sheetId);
+          update("gClientId", clientId);
+          setSheetUrl(url);
+          setStatus("success");
+        } catch(err) {
+          setStatus("error");
+        }
+        setSyncing(false);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [state, clientId]);
+
+  const connect = () => {
+    if (!clientId.trim()) { setStatus("noclientid"); return; }
+    const origin = window.location.origin;
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: `${origin}/oauth.html`,
+      response_type: "token",
+      scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",
+    });
+    window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, "GoogleOAuth", "width=500,height=600");
+    setStatus("waiting");
+  };
+
+  const syncNow = async () => {
+    if (!state.gAccessToken) { setStatus("notoken"); return; }
+    setSyncing(true); setStatus("syncing");
+    try {
+      const {sheetId, url} = await gSheetsSync(state, state.gAccessToken);
+      update("gSheetId", sheetId);
+      setSheetUrl(url);
+      setStatus("success");
+    } catch { setStatus("error"); }
+    setSyncing(false);
+  };
+
+  return (
+    <Card T={T}>
+      <div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary,marginBottom:4}}>Google Sheets sync</div>
+      <div style={{fontSize:SP.fontSm,color:T.textSecondary,marginBottom:12}}>Auto-sync all tracking data to a Google Sheet. Requires a Google Cloud OAuth Client ID.</div>
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>OAuth Client ID</div>
+        <Inp T={T} value={clientId} onChange={e=>setClientId(e.target.value)} placeholder="Paste your Google OAuth Client ID"/>
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+        <Btn T={T} onClick={connect} variant="accent">Connect Google</Btn>
+        {state.gAccessToken && <Btn T={T} onClick={syncNow} variant="positive" disabled={syncing}>{syncing?"Syncing…":"Sync now"}</Btn>}
+      </div>
+      {status==="waiting"   && <div style={{fontSize:SP.fontSm,color:T.noticeBg}}>Sign-in window opened — complete sign-in there.</div>}
+      {status==="syncing"   && <div style={{fontSize:SP.fontSm,color:T.accentBg}}>Syncing data to Google Sheets…</div>}
+      {status==="noclientid"&& <div style={{fontSize:SP.fontSm,color:T.negativeBg}}>Please paste your Client ID first.</div>}
+      {status==="notoken"   && <div style={{fontSize:SP.fontSm,color:T.negativeBg}}>Please connect Google first.</div>}
+      {status==="error"     && <div style={{fontSize:SP.fontSm,color:T.negativeBg}}>Sync failed — check your token and try again.</div>}
+      {status==="success"   && sheetUrl && (
+        <div style={{fontSize:SP.fontSm,color:T.positiveBg}}>✓ Synced! <a href={sheetUrl} target="_blank" style={{color:T.accentBg,textDecoration:"none"}}>Open sheet ↗</a></div>
+      )}
+    </Card>
+  );
+}
+
+// ── App ────────────────────────────────────────────────────────
+function App(){
+  const [state,setState]=useState(loadState);
+  const [tab,setTab]=useState("dashboard");
+  const [editMode,setEditMode]=useState(false);
+  const [onboarded,setOnboarded]=useState(()=>{try{return !!JSON.parse(localStorage.getItem("dear_penny_v1"))?.onboarded;}catch{return false;}});
+  const reminderRef=useRef(null);
+  const T=S2[state.theme||"dark"];
+
+  useEffect(()=>saveState(state),[state]);
+  useEffect(()=>{
+    if(reminderRef.current)clearInterval(reminderRef.current);
+    if(!state.reminderEnabled)return;
+    reminderRef.current=setInterval(()=>{const last=state.feeding[0];if(!last)return;if(minsAgo(last.ts)>=state.reminderInterval&&"Notification"in window&&Notification.permission==="granted")new Notification(`${state.babyName} — Time to feed!`,{body:`Last fed ${hoursAgo(last.ts)}h ago.`});},60000);
+    return()=>clearInterval(reminderRef.current);
+  },[state.reminderEnabled,state.reminderInterval,state.feeding,state.babyName]);
+
+  const update=useCallback((k,v)=>setState(s=>({...s,[k]:v})),[]);
+  const addEntry=useCallback((k,e)=>setState(s=>({...s,[k]:[{id:Date.now(),ts:nowISO(),...e},...s[k]]})),[]);
+  const removeEntry=useCallback((k,id)=>setState(s=>({...s,[k]:s[k].filter(e=>e.id!==id)})),[]);
+  const completeOnboarding=({babyName,dob})=>{setState(s=>({...s,babyName:babyName||"Baby Girl",babyDOB:dob||"",onboarded:true}));setOnboarded(true);};
+
+  if(!onboarded)return <Onboarding onComplete={completeOnboarding} T={T}/>;
+
+  return(
+    <div style={{fontFamily:"-apple-system,system-ui,sans-serif",maxWidth:520,margin:"0 auto",paddingBottom:90,background:T.bgBase,minHeight:"100vh",color:T.textPrimary}}>
+      <header style={{background:T.statusBar,borderBottom:`1px solid ${T.borderLight}`,padding:"14px 18px 12px",position:"sticky",top:0,zIndex:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:24}}>💌</span>
+          <div style={{flex:1}}><div style={{fontWeight:SP.weightBold,fontSize:SP.fontLg,color:T.textPrimary}}>DearPenny</div><div style={{fontSize:"11px",color:T.textSecondary}}>{state.babyFullName||state.babyName}</div></div>
+          <button onClick={()=>setEditMode(v=>!v)} style={{background:editMode?`${T.accentBg}22`:T.subtleBg,border:`1px solid ${editMode?T.accentBg:T.borderLight}`,borderRadius:SP.radiusPill,padding:"7px 12px",fontSize:SP.fontSm,cursor:"pointer",color:editMode?T.accentBg:T.textSecondary,fontWeight:SP.weightBold,height:"36px"}}>{editMode?"✓ Done":"✏ Layout"}</button>
+          <button onClick={()=>update("theme",state.theme==="dark"?"light":"dark")} style={{background:T.subtleBg,border:`1px solid ${T.borderLight}`,borderRadius:SP.radiusPill,padding:"7px 12px",fontSize:SP.fontSm,cursor:"pointer",color:T.textSecondary,fontWeight:SP.weightBold,height:"36px"}}>{state.theme==="dark"?"☀":"🌙"}</button>
+        </div>
+      </header>
+      <div style={{padding:"0 16px"}}>
+        {tab==="dashboard"   &&<Dashboard state={state} addEntry={addEntry} removeEntry={removeEntry} update={update} T={T} editMode={editMode}/>}
+        {tab==="feeding"     &&<Feeding state={state} addEntry={addEntry} removeEntry={removeEntry} T={T}/>}
+        {tab==="sleep"       &&<Sleep state={state} addEntry={addEntry} removeEntry={removeEntry} update={update} T={T}/>}
+        {tab==="camera"      &&<CameraTab state={state} update={update} T={T}/>}
+        {tab==="medicine"    &&<MedicineTab state={state} addEntry={addEntry} removeEntry={removeEntry} update={update} T={T}/>}
+        {tab==="symptoms"    &&<Symptoms state={state} addEntry={addEntry} removeEntry={removeEntry} T={T}/>}
+        {tab==="growth"      &&<Growth state={state} addEntry={addEntry} removeEntry={removeEntry} T={T}/>}
+        {tab==="history"     &&<History state={state} T={T}/>}
+        {tab==="doctor"      &&<DoctorVisit state={state} T={T}/>}
+        {tab==="contraction" &&<ContractionTimer state={state} update={update} T={T}/>}
+      </div>
+      <nav style={{position:"fixed",bottom:0,left:0,right:0,background:T.statusBar,borderTop:`1px solid ${T.borderLight}`}}>
+        <div style={{display:"flex",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",padding:"6px 0 env(safe-area-inset-bottom)"}}>
+          {NAV.map(n=>(
+            <button key={n.id} onClick={()=>{setTab(n.id);if(n.id!=="dashboard")setEditMode(false);}}
+              style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"2px",padding:"4px 0",color:tab===n.id?T.accentBg:T.textSecondary,minWidth:"20%",flexShrink:0,position:"relative"}}>
+              {tab===n.id&&<div style={{position:"absolute",top:0,left:"25%",right:"25%",height:"2px",background:T.accentBg,borderRadius:"0 0 2px 2px"}}/>}
+              <span style={{fontSize:17}}>{n.icon}</span>
+              <span style={{fontSize:"10px",fontWeight:tab===n.id?SP.weightBold:SP.weightReg}}>{n.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+    </div>
+  );
+}
+
+// ── Onboarding ─────────────────────────────────────────────────
+function Onboarding({onComplete,T}){
+  const [step,setStep]=useState(0),[babyName,setBabyName]=useState(""),[dob,setDob]=useState(""),[animIn,setAnimIn]=useState(true);
+  const next=()=>{setAnimIn(false);setTimeout(()=>{setStep(s=>s+1);setAnimIn(true);},250);};
+  const finish=()=>onComplete({babyName:babyName||"Baby Girl",dob});
+  const fade={transition:"opacity 0.25s,transform 0.25s",opacity:animIn?1:0,transform:animIn?"translateY(0)":"translateY(12px)"};
+  const Coin=({size=120})=>(<div style={{width:size,height:size,margin:"0 auto"}}><svg viewBox="0 0 120 120" width={size} height={size}><defs><radialGradient id="cg" cx="40%" cy="35%"><stop offset="0%" stopColor="#e8a44a"/><stop offset="50%" stopColor="#b5651d"/><stop offset="100%" stopColor="#7a3b0a"/></radialGradient><radialGradient id="ci" cx="40%" cy="35%"><stop offset="0%" stopColor="#d4823a"/><stop offset="100%" stopColor="#9a4a10"/></radialGradient></defs><circle cx="60" cy="60" r="57" fill="#7a3b0a"/><circle cx="60" cy="60" r="54" fill="url(#cg)"/><circle cx="60" cy="60" r="46" fill="url(#ci)"/><path id="ta" d="M 15,60 A 45,45 0 0,1 105,60" fill="none"/><path id="ba" d="M 18,68 A 43,43 0 0,0 102,68" fill="none"/><text fontSize="11" fontWeight="bold" fill="#f5deb3" fontFamily="Georgia,serif" letterSpacing="2.5"><textPath href="#ta" startOffset="12%">DEAR PENNY</textPath></text><text fontSize="8.5" fontWeight="bold" fill="#f5deb3" fontFamily="Georgia,serif" letterSpacing="1.5"><textPath href="#ba" startOffset="8%">IN LIFE WE TRUST</textPath></text><ellipse cx="60" cy="58" rx="18" ry="20" fill="#8b4513" opacity="0.85"/><circle cx="60" cy="46" r="11" fill="#7a3b0a"/><ellipse cx="57" cy="44" rx="7" ry="8" fill="#a0522d" opacity="0.5"/><ellipse cx="60" cy="55" rx="10" ry="13" fill="#7a3b0a"/><path d="M52,62 Q60,68 68,62" fill="none" stroke="#5a2d0a" strokeWidth="1.2" strokeLinecap="round"/></svg></div>);
+  const steps=[
+    <div key="0" style={{...fade,textAlign:"center",padding:"0 8px"}}><style>{`@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}`}</style><div style={{animation:"float 3s ease-in-out infinite",marginBottom:24}}><Coin size={140}/></div><div style={{fontSize:32,fontWeight:SP.weightBold,color:T.textPrimary,marginBottom:8,lineHeight:1.2}}>Welcome to<br/>DearPenny</div><div style={{fontSize:SP.fontMd,color:T.textSecondary,lineHeight:1.7,marginBottom:32}}>Your all-in-one baby tracker,<br/>built with love for your growing family.</div><Btn T={T} onClick={next} variant="accent" full>Get started</Btn></div>,
+    <div key="1" style={{...fade,padding:"0 8px"}}><div style={{textAlign:"center",marginBottom:28}}><Coin size={80}/><div style={{fontSize:24,fontWeight:SP.weightBold,color:T.textPrimary,marginTop:16,marginBottom:6}}>What's your baby's nickname?</div></div><div style={{marginBottom:16}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Nickname</div><Inp T={T} value={babyName} onChange={e=>setBabyName(e.target.value)} placeholder="e.g. Penny" style={{fontSize:SP.fontLg,textAlign:"center"}}/></div><div style={{marginBottom:24}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Due date / Date of birth</div><Inp T={T} value={dob} onChange={e=>setDob(e.target.value)} type="date"/></div><Btn T={T} onClick={next} variant="accent" full>{babyName?`Continue with "${babyName}"`:"Continue"}</Btn><div style={{textAlign:"center",marginTop:12}}><button onClick={next} style={{background:"none",border:"none",cursor:"pointer",color:T.textSecondary,fontSize:SP.fontSm}}>Skip for now</button></div></div>,
+    <div key="2" style={{...fade,padding:"0 8px"}}><div style={{textAlign:"center",marginBottom:28}}><div style={{fontSize:48,marginBottom:12}}>🔔</div><div style={{fontSize:24,fontWeight:SP.weightBold,color:T.textPrimary,marginBottom:6}}>Stay on schedule</div></div><NotifSetup T={T}/><div style={{marginTop:20}}><Btn T={T} onClick={finish} variant="positive" full>Start tracking {babyName||"Baby"} →</Btn></div></div>,
+  ];
+  return(<div style={{minHeight:"100vh",background:T.bgBase,display:"flex",flexDirection:"column",justifyContent:"center",padding:"32px 24px",boxSizing:"border-box"}}><div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:40}}>{steps.map((_,i)=><div key={i} style={{width:i===step?24:8,height:8,borderRadius:4,background:i<=step?T.accentBg:T.bgLayer3,transition:"all 0.3s"}}/>)}</div>{steps[step]}{step>0&&<button onClick={()=>setStep(s=>s-1)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:SP.fontSm,marginTop:20,textAlign:"center",display:"block",width:"100%"}}>← Back</button>}</div>);
+}
+function NotifSetup({T}){
+  const [status,setStatus]=useState("Notification" in window?Notification.permission:"unsupported");
+  const request=async()=>{const p=await Notification.requestPermission();setStatus(p);};
+  return(<div style={{background:T.bgLayer1,border:`1px solid ${T.borderLight}`,borderRadius:SP.radiusLg,padding:"16px"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>Browser notifications</div><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:2}}>{status==="granted"?"✓ Enabled!":status==="denied"?"Blocked in browser settings":status==="unsupported"?"Not supported":"Tap to enable reminders"}</div></div>{status==="default"&&<Btn T={T} onClick={request} variant="accent" size="sm">Enable</Btn>}{status==="granted"&&<Tag T={T} color="positive">On</Tag>}{status==="denied"&&<Tag T={T} color="negative">Blocked</Tag>}</div></div>);
+}
+function BabySetup({state,update,T}){
+  const [fn,setFn]=useState(state.babyFullName||""),[nick,setNick]=useState(state.babyName||"Baby Girl"),[dob,setDob]=useState(state.babyDOB||""),[bw,setBw]=useState(state.babyBirthWeight||"");
+  const save=()=>{update("babyFullName",fn);update("babyName",nick||fn||"Baby Girl");update("babyDOB",dob);update("babyBirthWeight",bw);};
+  return(<Card T={T}><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary,marginBottom:12}}>{state.babyName?`${state.babyName}'s details`:"Baby's details"}</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>{[["Full name",fn,setFn,"e.g. Penelope Rose","text"],["Nickname",nick,setNick,"e.g. Penny","text"],["Date of birth",dob,setDob,"","date"],["Birth weight (kg)",bw,setBw,"e.g. 3.4","number"]].map(([label,val,setter,ph,type])=>(<div key={label}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</div><Inp T={T} value={val} onChange={e=>setter(e.target.value)} placeholder={ph} type={type} step={type==="number"?"0.01":undefined}/></div>))}</div><Btn T={T} onClick={save} variant="accent">Save details</Btn></Card>);
+}
+
+function Dashboard({state,addEntry,removeEntry,update,T,editMode}){
+  const lastFeed=state.feeding[0],lastDiaper=state.diapers[0],lastSymptom=state.symptoms[0],activeSleep=state.sleep.find(s=>!s.end);
+  const [showDiaper,setShowDiaper]=useState(false),[dType,setDType]=useState("wet");
+  const [notifStatus,setNotifStatus]=useState("Notification" in window?Notification.permission:"unsupported");
+  const [showSync,setShowSync]=useState(false),[roomInput,setRoomInput]=useState(""),[syncMsg,setSyncMsg]=useState("");
+  const order=(state.widgetOrder&&state.widgetOrder.length>0)?state.widgetOrder:[...DEFAULT_WIDGET_ORDER];
+  const reqNotif=async()=>{const p=await Notification.requestPermission();setNotifStatus(p);if(p==="granted")update("reminderEnabled",true);};
+  const moveWidget=(i,dir)=>{const next=[...order];const t=i+dir;if(t<0||t>=next.length)return;[next[i],next[t]]=[next[t],next[i]];update("widgetOrder",next);};
+
+  const renderWidget=(id)=>{
+    switch(id){
+      case "status":return(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatCard T={T} label="Last feeding" value={lastFeed?`${hoursAgo(lastFeed.ts)}h ago`:"—"} sub={lastFeed?lastFeed.side||lastFeed.food||lastFeed.type:""} color="blue"/><StatCard T={T} label="Last diaper" value={lastDiaper?`${minsAgo(lastDiaper.ts)}m ago`:"—"} sub={lastDiaper?lastDiaper.type:""} color="amber"/><StatCard T={T} label="Sleep" value={activeSleep?"Sleeping":"Awake"} sub={activeSleep?`Since ${fmtTime(activeSleep.ts)}`:""} color="purple"/><StatCard T={T} label="Last symptom" value={lastSymptom?fmtDate(lastSymptom.ts):"—"} sub={lastSymptom?lastSymptom.type:"All clear"} color={lastSymptom?"red":"gray"}/></div>);
+      case "monitor":return <BabyMonitorWidget state={state} T={T}/>;
+      case "diaper":return !showDiaper?<Btn T={T} onClick={()=>setShowDiaper(true)} variant="secondary">+ Log diaper change</Btn>:(<div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{["wet","dirty","mixed","dry"].map(t=><Chip key={t} label={t} selected={dType===t} onClick={()=>setDType(t)} T={T}/>)}</div><div style={{display:"flex",gap:8}}><Btn T={T} onClick={()=>{addEntry("diapers",{type:dType});setShowDiaper(false);}} variant="positive">Save</Btn><Btn T={T} onClick={()=>setShowDiaper(false)} variant="quiet" size="sm">Cancel</Btn></div></div>);
+      case "reminder":return(<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:notifStatus==="granted"?12:0}}><div><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>Remind me to feed</div><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:2}}>Every {state.reminderInterval} min</div></div>{notifStatus==="unsupported"&&<Tag T={T} color="notice">Not supported</Tag>}{notifStatus==="default"&&<Btn T={T} onClick={reqNotif} variant="accent" size="sm">Enable</Btn>}{notifStatus==="denied"&&<Tag T={T} color="negative">Blocked</Tag>}{notifStatus==="granted"&&<button onClick={()=>update("reminderEnabled",!state.reminderEnabled)} style={{padding:"8px 18px",borderRadius:SP.radiusPill,border:`1.5px solid ${state.reminderEnabled?T.positiveBg:T.borderMid}`,cursor:"pointer",fontSize:SP.fontSm,background:state.reminderEnabled?`${T.positiveBg}22`:"transparent",color:state.reminderEnabled?T.positiveBg:T.textSecondary,fontWeight:SP.weightBold}}>{state.reminderEnabled?"● On":"○ Off"}</button>}</div>{notifStatus==="granted"&&<div><input type="range" min="30" max="360" step="15" value={state.reminderInterval} onChange={e=>update("reminderInterval",Number(e.target.value))} style={{width:"100%",accentColor:T.accentBg,marginBottom:4}}/><div style={{display:"flex",justifyContent:"space-between",fontSize:"11px",color:T.textSecondary}}><span>30m</span><span>2h</span><span>4h</span><span>6h</span></div></div>}</div>);
+      case "sync":return(<div><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginBottom:12}}>Share a room code with your partner to sync in real time.</div>{!state.sharedRoomId?(<div><div style={{display:"flex",gap:8,marginBottom:8}}><Btn T={T} onClick={async()=>{const id=Math.random().toString(36).slice(2,8).toUpperCase();update("sharedRoomId",id);setSyncMsg(`Room: ${id}`);}} variant="accent">Create room</Btn><Btn T={T} onClick={()=>setShowSync(!showSync)} variant="secondary">Join room</Btn></div>{showSync&&<div style={{display:"flex",gap:8}}><Inp T={T} value={roomInput} onChange={e=>setRoomInput(e.target.value)} placeholder="Room code"/><Btn T={T} onClick={()=>{if(roomInput.trim()){update("sharedRoomId",roomInput.trim().toUpperCase());setSyncMsg("Joined!");}}} variant="positive">Join</Btn></div>}{syncMsg&&<div style={{fontSize:SP.fontSm,color:T.accentBg,marginTop:8,fontWeight:SP.weightBold}}>{syncMsg}</div>}</div>):(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>Room: <span style={{color:T.accentBg,fontFamily:"monospace",letterSpacing:3}}>{state.sharedRoomId}</span></div><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:2}}>Active</div></div><Btn T={T} onClick={()=>update("sharedRoomId",null)} variant="quiet" size="sm">Leave</Btn></div>)}</div>);
+      case "feedings":return(<div>{state.feeding.slice(0,4).map(f=>(<div key={f.id} style={{display:"flex",justifyContent:"space-between",paddingBottom:10,marginBottom:10,borderBottom:`1px solid ${T.borderLight}`}}><div><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}><Tag T={T} color="info">{f.type}</Tag>{f.side&&<Tag T={T} color="positive">{f.side}</Tag>}{f.food&&<Tag T={T} color="positive">{f.food}</Tag>}</div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtDate(f.ts)} at {fmtTime(f.ts)}</div></div><button onClick={()=>removeEntry("feeding",f.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:20,padding:"0 0 0 8px"}}>×</button></div>))}{state.feeding.length===0&&<div style={{fontSize:SP.fontSm,color:T.textDisabled}}>No feedings yet.</div>}</div>);
+      default:return null;
+    }
+  };
+
+  return(<div>
+    <SL T={T}>Baby details</SL><BabySetup state={state} update={update} T={T}/>
+    <SL T={T}>Google Sheets</SL><GoogleSheetsCard state={state} update={update} T={T}/>
+    <SL T={T}>Widgets</SL>
+    {editMode&&<div style={{background:`${T.accentBg}18`,border:`1px solid ${T.accentBg}55`,borderRadius:SP.radiusMd,padding:"10px 14px",marginBottom:4,fontSize:SP.fontSm,color:T.accentBg,fontWeight:SP.weightBold}}>✏ Use ▲ ▼ to reorder</div>}
+    {order.map((id,i)=>(<div key={id} style={{marginTop:10,border:editMode?`2px solid ${T.accentBg}`:`1px solid ${T.borderLight}`,borderRadius:SP.radiusLg,background:T.bgLayer1,overflow:"hidden"}}>{editMode&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:`1px solid ${T.borderLight}`,background:T.bgLayer2}}><span style={{fontSize:SP.fontSm,fontWeight:SP.weightBold,color:T.accentBg,flex:1}}>{WIDGET_META[id]?.icon} {WIDGET_META[id]?.label}</span><button onClick={()=>moveWidget(i,-1)} disabled={i===0} style={{width:36,height:36,borderRadius:SP.radiusMd,border:`1px solid ${T.borderMid}`,background:T.bgLayer1,cursor:i===0?"not-allowed":"pointer",color:i===0?T.textDisabled:T.textPrimary,fontSize:18,opacity:i===0?0.3:1,lineHeight:1}}>▲</button><button onClick={()=>moveWidget(i,1)} disabled={i===order.length-1} style={{width:36,height:36,borderRadius:SP.radiusMd,border:`1px solid ${T.borderMid}`,background:T.bgLayer1,cursor:i===order.length-1?"not-allowed":"pointer",color:i===order.length-1?T.textDisabled:T.textPrimary,fontSize:18,opacity:i===order.length-1?0.3:1,lineHeight:1}}>▼</button></div>}<div style={{padding:"14px 16px"}}>{renderWidget(id)}</div></div>))}
+  </div>);
+}
+
+function Feeding({state,addEntry,removeEntry,T}){
+  const [mode,setMode]=useState("milk"),[type,setType]=useState("breast"),[side,setSide]=useState("left"),[amount,setAmount]=useState(""),[duration,setDuration]=useState(""),[note,setNote]=useState(""),[foods,setFoods]=useState([]),[reaction,setReaction]=useState("none"),[custom,setCustom]=useState("");
+  const lastSide=state.feeding.find(f=>f.side)?.side;
+  const toggleFood=f=>setFoods(s=>s.includes(f)?s.filter(x=>x!==f):[...s,f]);
+  const handleAdd=()=>{if(mode==="milk"){const e={type};if(type==="breast"){e.side=side;if(duration)e.duration=duration;}if(type==="bottle"||type==="formula")e.amount=amount+"ml";if(note)e.note=note;addEntry("feeding",e);}else{const fs=[...foods,...(custom.trim()?[custom.trim()]:[])];if(!fs.length)return;addEntry("feeding",{type:"solid",food:fs.join(", "),reaction,note});}setAmount("");setDuration("");setNote("");setFoods([]);setCustom("");setReaction("none");};
+  return(<div><SL T={T}>Log a feeding</SL><Card T={T}><Segmented T={T} options={[{id:"milk",label:"Milk / Formula"},{id:"solid",label:"Solid Foods"}]} value={mode} onChange={setMode}/><div style={{marginTop:14}}>{mode==="milk"&&<><div style={{marginBottom:12}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Type</div><div style={{display:"flex",gap:8}}>{["breast","bottle","formula"].map(t=><Chip key={t} label={t} selected={type===t} onClick={()=>setType(t)} T={T}/>)}</div></div>{type==="breast"&&<div style={{marginBottom:12}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Side{lastSide?` (last: ${lastSide})`:""}</div><div style={{display:"flex",gap:8,marginBottom:12}}>{["left","right","both"].map(s=><Chip key={s} label={s} selected={side===s} onClick={()=>setSide(s)} T={T} color="positive"/>)}</div><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Duration (min)</div><Inp T={T} value={duration} onChange={e=>setDuration(e.target.value)} type="number" placeholder="e.g. 15" style={{width:100}}/></div>}{(type==="bottle"||type==="formula")&&<div style={{marginBottom:12}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Amount (ml)</div><Inp T={T} value={amount} onChange={e=>setAmount(e.target.value)} type="number" placeholder="e.g. 90" style={{width:100}}/></div>}</>}{mode==="solid"&&<>{Object.entries(SOLID_FOODS).map(([cat,items])=>(<div key={cat} style={{marginBottom:14}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>{cat}</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{items.map(f=><Chip key={f} label={f} selected={foods.includes(f)} onClick={()=>toggleFood(f)} T={T} color="positive"/>)}</div></div>))} <div style={{marginBottom:12}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Custom food</div><Inp T={T} value={custom} onChange={e=>setCustom(e.target.value)} placeholder="e.g. Hummus"/></div><div style={{marginBottom:12}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Reaction</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none",""],["liked","positive"],["disliked","notice"],["allergic","negative"]].map(([r,c])=><Chip key={r} label={r} selected={reaction===r} onClick={()=>setReaction(r)} T={T} color={c||undefined}/>)}</div></div></>}</div><Inp T={T} value={note} onChange={e=>setNote(e.target.value)} placeholder="Note (optional)" style={{marginBottom:12}}/><Btn T={T} onClick={handleAdd} variant="accent">+ Log feeding</Btn></Card><SL T={T}>History</SL>{state.feeding.map(f=>(<Card key={f.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"12px 16px"}}><div><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}><Tag T={T} color="info">{f.type}</Tag>{f.side&&<Tag T={T} color="positive">{f.side}</Tag>}{f.amount&&<Tag T={T}>{f.amount}</Tag>}{f.food&&<Tag T={T} color="positive">{f.food}</Tag>}{f.reaction&&f.reaction!=="none"&&<Tag T={T} color={f.reaction==="liked"?"positive":f.reaction==="allergic"?"negative":"notice"}>{f.reaction}</Tag>}</div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtDate(f.ts)} at {fmtTime(f.ts)}{f.duration?` · ${f.duration}min`:""}{f.note?` · ${f.note}`:""}</div></div><button onClick={()=>removeEntry("feeding",f.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:20,padding:"0 0 0 8px"}}>×</button></Card>))}</div>);
+}
+
+function Sleep({state,addEntry,removeEntry,update,T}){
+  const active=state.sleep.find(s=>!s.end),completed=state.sleep.filter(s=>s.end);
+  const todayMins=completed.filter(s=>fmtDate(s.ts)===fmtDate(nowISO())).reduce((a,s)=>a+durationMins(s.ts,s.end),0);
+  const [note,setNote]=useState("");const [,tick]=useState(0);
+  useEffect(()=>{if(!active)return;const t=setInterval(()=>tick(n=>n+1),15000);return()=>clearInterval(t);},[active]);
+  return(<div><SL T={T}>Sleep tracker</SL><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:6}}><StatCard T={T} label="Today's sleep" value={fmtDur(todayMins)} sub={`${completed.filter(s=>fmtDate(s.ts)===fmtDate(nowISO())).length} sessions`} color="purple"/><StatCard T={T} label="Last session" value={completed[0]?fmtDur(durationMins(completed[0].ts,completed[0].end)):"—"} sub={completed[0]?fmtDate(completed[0].ts):"None"} color="gray"/></div><Card T={T}>{active?(<div style={{textAlign:"center",padding:"12px 0"}}><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginBottom:6}}>Sleeping since {fmtTime(active.ts)}</div><div style={{fontSize:44,fontWeight:SP.weightBold,color:T.accentBg,marginBottom:16}}>{fmtDur(durationMins(active.ts,nowISO()))}</div><Btn T={T} onClick={()=>update("sleep",state.sleep.map(s=>s.id===active.id?{...s,end:nowISO()}:s))} variant="notice" full>Wake up — end session</Btn></div>):(<div><Inp T={T} value={note} onChange={e=>setNote(e.target.value)} placeholder="Note (e.g. nap, night sleep)" style={{marginBottom:12}}/><Btn T={T} onClick={()=>{addEntry("sleep",{note,end:null});setNote("");}} full>Start sleep session</Btn></div>)}</Card><SL T={T}>History</SL>{state.sleep.map(s=>(<Card key={s.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"12px 16px"}}><div><div style={{display:"flex",gap:6,marginBottom:4}}><Tag T={T} color="info">{s.end?fmtDur(durationMins(s.ts,s.end)):"ongoing"}</Tag>{s.note&&<Tag T={T}>{s.note}</Tag>}{s.endReason==="motion"&&<Tag T={T} color="notice">auto-ended</Tag>}</div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtDate(s.ts)} {fmtTime(s.ts)}{s.end?` → ${fmtTime(s.end)}`:""}</div></div><button onClick={()=>removeEntry("sleep",s.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:20,padding:"0 0 0 8px"}}>×</button></Card>))}</div>);
+}
+
+function BabyMonitorWidget({state,T}){
+  const cfg=state.cameraConfig||{},hasConfig=cfg.ip&&cfg.port;
+  const [time,setTime]=useState(new Date());
+  useEffect(()=>{const t=setInterval(()=>setTime(new Date()),1000);return()=>clearInterval(t);},[]);
+  return(<Card T={T} style={{padding:0,overflow:"hidden"}}><div style={{background:"#0a0a0a",borderRadius:`${SP.radiusLg} ${SP.radiusLg} 0 0`,aspectRatio:"16/9",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}><div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,60,0.03) 3px,rgba(0,255,60,0.03) 4px)",pointerEvents:"none"}}/><div style={{position:"absolute",bottom:10,left:12,fontSize:"10px",color:"rgba(0,255,60,0.7)",fontFamily:"monospace"}}>{time.toLocaleDateString()} {time.toLocaleTimeString()}</div><div style={{position:"absolute",top:10,left:12,fontSize:"10px",color:"rgba(0,255,60,0.7)",fontFamily:"monospace"}}>{cfg.label||"CAM 1"}</div><div style={{textAlign:"center",zIndex:1}}><div style={{fontSize:40,marginBottom:8,opacity:0.4}}>⦿</div><div style={{fontSize:"12px",color:"rgba(0,255,60,0.6)",fontFamily:"monospace"}}>{hasConfig?`RTSP · ${cfg.ip}:${cfg.port}`:"LIVE FEED UNAVAILABLE"}</div></div></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:T.bgLayer2}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:8,height:8,borderRadius:"50%",background:hasConfig?T.positiveBg:T.textDisabled}}/><span style={{fontSize:SP.fontSm,color:T.textSecondary,fontWeight:SP.weightBold}}>{hasConfig?"Camera configured":"Not configured"}</span></div><Tag T={T} color={hasConfig?"positive":"notice"}>{hasConfig?"Ready":"Setup needed"}</Tag></div></Card>);
+}
+
+function CameraTab({state,update,T}){
+  const cfg=state.cameraConfig||{},motionCfg=state.motionConfig||{sensitivity:40,autoEndSleep:true,notifyBoth:true,stirringAlert:false,awakeAlert:true,enabled:false};
+  const [ip,setIp]=useState(cfg.ip||""),[port,setPort]=useState(cfg.port||"554"),[user,setUser]=useState(cfg.user||"admin"),[pass,setPass]=useState(cfg.pass||""),[channel,setChannel]=useState(cfg.channel||"0"),[label,setLabel]=useState(cfg.label||"Nursery"),[saved,setSaved]=useState(false);
+  const [simRunning,setSimRunning]=useState(false),[motionScore,setMotionScore]=useState(0),[motionHistory,setMotionHistory]=useState([]),[alertShown,setAlertShown]=useState(null);
+  const simRef=useRef(null),scoreRef=useRef(0),tickRef=useRef(0);
+  const activeSleep=state.sleep.find(s=>!s.end);
+  const saveCamera=()=>{update("cameraConfig",{ip,port,user,pass,channel,label});setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const saveMotion=patch=>update("motionConfig",{...motionCfg,...patch});
+  const triggerAlert=(level,score)=>{const msgs={stirring:`${state.babyName} is stirring (${score})`,awake:`${state.babyName} appears awake! (${score})`};if(level==="awake"&&motionCfg.awakeAlert&&"Notification"in window&&Notification.permission==="granted")new Notification("DearPenny — Baby awake! 👶",{body:msgs.awake});if(level==="stirring"&&motionCfg.stirringAlert&&"Notification"in window&&Notification.permission==="granted")new Notification("DearPenny — Baby stirring 🌙",{body:msgs.stirring});setAlertShown({level,msg:msgs[level]||""});setTimeout(()=>setAlertShown(null),4000);};
+  const startSim=()=>{setSimRunning(true);setMotionScore(0);scoreRef.current=0;tickRef.current=0;setMotionHistory([]);simRef.current=setInterval(()=>{tickRef.current++;const tick=tickRef.current;let target=0,noise=3;if(tick<20){target=2;noise=3;}else if(tick<35){target=25;noise=8;}else if(tick<50){target=55;noise=12;}else if(tick<70){target=82;noise=10;}else if(tick<85){target=60;noise=15;}else{target=90;noise=8;}const s=Math.max(0,Math.min(100,target+(Math.random()-.5)*noise*2));scoreRef.current=s;const r=Math.round(s);const lv=getMotionLevel(r);setMotionScore(r);if(tick%5===0)setMotionHistory(h=>[{ts:nowISO(),score:r,level:lv},...h].slice(0,20));if(lv==="awake"&&tick===50){triggerAlert("awake",r);if(motionCfg.autoEndSleep&&activeSleep)update("sleep",state.sleep.map(sl=>sl.id===activeSleep.id?{...sl,end:nowISO(),endReason:"motion"}:sl));}if(lv==="stirring"&&tick===35)triggerAlert("stirring",r);if(tick>=100){clearInterval(simRef.current);setSimRunning(false);}},200);};
+  const stopSim=()=>{clearInterval(simRef.current);setSimRunning(false);setMotionScore(0);};
+  useEffect(()=>()=>clearInterval(simRef.current),[]);
+  const [pixels,setPixels]=useState(()=>Array(64).fill(0));
+  useEffect(()=>{if(!simRunning){setPixels(Array(64).fill(0));return;}const t=setInterval(()=>setPixels(Array(64).fill(0).map(()=>Math.random()<(scoreRef.current/140)?Math.random():0)),150);return()=>clearInterval(t);},[simRunning]);
+  const [time,setTime]=useState(new Date());
+  useEffect(()=>{const t=setInterval(()=>setTime(new Date()),1000);return()=>clearInterval(t);},[]);
+  const level=getMotionLevel(motionScore);
+  const rtspUrl=ip?`rtsp://${user}:****@${ip}:${port}/h264Preview_0${channel}_main`:"";
+  return(<div><SL T={T}>Baby monitor</SL><Card T={T} style={{padding:0,overflow:"hidden"}}><div style={{background:"#0a0a0a",borderRadius:`${SP.radiusLg} ${SP.radiusLg} 0 0`,aspectRatio:"16/9",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}><div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,60,0.03) 3px,rgba(0,255,60,0.03) 4px)",pointerEvents:"none",zIndex:2}}/>{simRunning&&<div style={{position:"absolute",inset:0,display:"grid",gridTemplateColumns:"repeat(8,1fr)",zIndex:1,pointerEvents:"none"}}>{pixels.map((v,i)=>v>0?<div key={i} style={{background:`rgba(255,${v>.5?80:200},0,${v*.6})`}}/>:<div key={i}/>)}</div>}{simRunning&&<div style={{position:"absolute",bottom:28,left:12,right:12,zIndex:3}}><div style={{background:"rgba(0,0,0,0.5)",borderRadius:4,height:6,overflow:"hidden"}}><div style={{height:"100%",width:`${motionScore}%`,background:motionColor(level,T),borderRadius:4,transition:"width 0.2s"}}/></div></div>}<div style={{position:"absolute",bottom:10,left:12,fontSize:"10px",color:"rgba(0,255,60,0.7)",fontFamily:"monospace",zIndex:3}}>{time.toLocaleDateString()} {time.toLocaleTimeString()}</div><div style={{position:"absolute",top:10,left:12,fontSize:"10px",color:"rgba(0,255,60,0.7)",fontFamily:"monospace",zIndex:3}}>{cfg.label||"CAM 1"}</div>{simRunning&&<div style={{position:"absolute",top:10,right:12,fontSize:"10px",fontFamily:"monospace",zIndex:3,color:motionColor(level,T),fontWeight:"bold"}}>{MOTION_LEVELS[level].label.toUpperCase()}</div>}{!simRunning&&<div style={{textAlign:"center",zIndex:1}}><div style={{fontSize:36,marginBottom:8,opacity:0.4}}>⦿</div><div style={{fontSize:"12px",color:"rgba(0,255,60,0.6)",fontFamily:"monospace"}}>{ip?`RTSP · ${ip}:${port}`:"LIVE FEED UNAVAILABLE"}</div></div>}{alertShown&&<div style={{position:"absolute",top:0,left:0,right:0,padding:"10px 14px",background:alertShown.level==="awake"?`${T.negativeBg}ee`:`${T.noticeBg}ee`,zIndex:10,fontSize:"12px",fontWeight:SP.weightBold,color:"#fff",textAlign:"center"}}>🔔 {alertShown.msg}</div>}</div><div style={{padding:"12px 14px",background:T.bgLayer2}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:simRunning?10:0}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:8,height:8,borderRadius:"50%",background:simRunning?motionColor(level,T):T.textDisabled}}/><span style={{fontSize:SP.fontSm,fontWeight:SP.weightBold,color:T.textSecondary}}>{simRunning?"Motion active":"Stopped"}</span></div>{!simRunning?<Btn T={T} onClick={startSim} variant="accent" size="sm">▶ Simulate</Btn>:<Btn T={T} onClick={stopSim} variant="negative" size="sm">■ Stop</Btn>}</div>{simRunning&&<div style={{display:"flex",gap:8,alignItems:"center"}}><div style={{flex:1,background:T.bgLayer3,borderRadius:4,height:8,overflow:"hidden"}}><div style={{height:"100%",width:`${motionScore}%`,background:motionColor(level,T),borderRadius:4,transition:"width 0.15s"}}/></div><Tag T={T} color={motionTagColor(level)}>{motionScore} — {MOTION_LEVELS[level].label}</Tag></div>}</div></Card>
+  <SL T={T}>Motion settings</SL><Card T={T}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>Motion detection</div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>APK: configure now</div></div><button onClick={()=>saveMotion({enabled:!motionCfg.enabled})} style={{padding:"8px 18px",borderRadius:SP.radiusPill,border:`1.5px solid ${motionCfg.enabled?T.positiveBg:T.borderMid}`,cursor:"pointer",fontSize:SP.fontSm,background:motionCfg.enabled?`${T.positiveBg}22`:"transparent",color:motionCfg.enabled?T.positiveBg:T.textSecondary,fontWeight:SP.weightBold}}>{motionCfg.enabled?"● On":"○ Off"}</button></div>
+  <div style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,textTransform:"uppercase",letterSpacing:"0.06em"}}>Wake threshold</div><Tag T={T} color={motionCfg.sensitivity>=75?"negative":motionCfg.sensitivity>=50?"notice":"positive"}>{motionCfg.sensitivity}</Tag></div><input type="range" min="10" max="90" step="5" value={motionCfg.sensitivity} onChange={e=>saveMotion({sensitivity:Number(e.target.value)})} style={{width:"100%",accentColor:T.accentBg}}/></div>
+  {[["autoEndSleep","Auto-end sleep"],["notifyBoth","Notify both parents"],["stirringAlert","Alert on stirring"],["awakeAlert","Alert when awake"]].map(([key,label])=>(<div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:10,marginBottom:10,borderBottom:`1px solid ${T.borderLight}`}}><div style={{fontSize:SP.fontMd,color:T.textPrimary}}>{label}</div><button onClick={()=>saveMotion({[key]:!motionCfg[key]})} style={{padding:"6px 14px",borderRadius:SP.radiusPill,border:`1.5px solid ${motionCfg[key]?T.positiveBg:T.borderMid}`,cursor:"pointer",fontSize:SP.fontSm,background:motionCfg[key]?`${T.positiveBg}22`:"transparent",color:motionCfg[key]?T.positiveBg:T.textSecondary,fontWeight:SP.weightBold}}>{motionCfg[key]?"On":"Off"}</button></div>))}</Card>
+  <SL T={T}>Reolink settings</SL><Card T={T}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>{[["Label",label,setLabel,"Nursery","text"],["Channel",channel,setChannel,"0","number"],["IP",ip,setIp,"192.168.1.100","text"],["Port",port,setPort,"554","number"],["User",user,setUser,"admin","text"],["Password",pass,setPass,"••••••","password"]].map(([lbl,val,setter,ph,type])=>(<div key={lbl} style={{gridColumn:lbl==="IP"?"1/-1":"auto"}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>{lbl}</div><Inp T={T} value={val} onChange={e=>setter(e.target.value)} placeholder={ph} type={type}/></div>))}</div>{rtspUrl&&<div style={{background:T.bgLayer2,borderRadius:SP.radiusSm,padding:"10px 12px",marginBottom:12}}><div style={{fontSize:"12px",fontFamily:"monospace",color:T.accentBg,wordBreak:"break-all"}}>{rtspUrl}</div></div>}<div style={{display:"flex",gap:10,alignItems:"center"}}><Btn T={T} onClick={saveCamera} variant="accent">Save</Btn>{saved&&<Tag T={T} color="positive">✓ Saved!</Tag>}</div></Card></div>);
+}
+
+function MedicineTab({state,addEntry,removeEntry,update,T}){
+  const [subTab,setSubTab]=useState("meds");
+  const doses=state.doses||[],vaccDone=state.vaccDone||{},vaccSkipped=state.vaccSkipped||{},vaccDelayed=state.vaccDelayed||{};
+  const babyAgeWeeks=getBabyAgeWeeks(state.babyDOB);
+  const [medName,setMedName]=useState(""),[customMed,setCustomMed]=useState(""),[amount,setAmount]=useState(""),[unit,setUnit]=useState("ml"),[reason,setReason]=useState(""),[givenBy,setGivenBy]=useState("");
+  const logDose=()=>{const name=medName==="Other"?customMed.trim():medName;if(!name||!amount)return;addEntry("doses",{name,amount,unit,reason,givenBy});setMedName("");setCustomMed("");setAmount("");setReason("");setGivenBy("");};
+  const markVacc=(id,notes="")=>update("vaccDone",{...vaccDone,[id]:{ts:nowISO(),notes}});
+  const skipVacc=(id,rsn="")=>update("vaccSkipped",{...vaccSkipped,[id]:{ts:nowISO(),reason:rsn}});
+  const delayVacc=(id,until="",rsn="")=>update("vaccDelayed",{...vaccDelayed,[id]:{ts:nowISO(),until,reason:rsn}});
+  const unmarkVacc=id=>{const n={...vaccDone};delete n[id];update("vaccDone",n);};
+  const unskipVacc=id=>{const n={...vaccSkipped};delete n[id];update("vaccSkipped",n);};
+  const undelayVacc=id=>{const n={...vaccDelayed};delete n[id];update("vaccDelayed",n);};
+  const doneCount=Object.keys(vaccDone).length,skippedCount=Object.keys(vaccSkipped).length,delayedCount=Object.keys(vaccDelayed).length,totalCount=VAX_SCHEDULE.length;
+  const pending=VAX_SCHEDULE.filter(v=>!vaccDone[v.id]&&!vaccSkipped[v.id]&&!vaccDelayed[v.id]).sort((a,b)=>a.ageWeeks-b.ageWeeks);
+  const overdue=babyAgeWeeks!==null?pending.filter(v=>v.ageWeeks<=babyAgeWeeks):[];
+  const next=babyAgeWeeks!==null?pending.filter(v=>v.ageWeeks>babyAgeWeeks):pending;
+  const groupByAge=arr=>arr.reduce((acc,v)=>{if(!acc[v.ageLabel])acc[v.ageLabel]=[];acc[v.ageLabel].push(v);return acc;},{});
+  const [vaccNote,setVaccNote]=useState({});
+  return(<div>
+    <div style={{marginTop:16,marginBottom:4}}><Segmented T={T} options={[{id:"meds",label:"Medicine doses"},{id:"vacc",label:"Vaccinations"}]} value={subTab} onChange={setSubTab}/></div>
+    {subTab==="meds"&&<><SL T={T}>Log a dose</SL><Card T={T}><div style={{marginBottom:12}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Medicine</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{COMMON_MEDS.map(m=><Chip key={m} label={m} selected={medName===m} onClick={()=>setMedName(m)} T={T}/>)}</div>{medName==="Other"&&<Inp T={T} value={customMed} onChange={e=>setCustomMed(e.target.value)} placeholder="Medicine name" style={{marginTop:10}}/>}</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}><div><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Amount</div><Inp T={T} value={amount} onChange={e=>setAmount(e.target.value)} type="number" step="0.1" placeholder="2.5"/></div><div><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Unit</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{DOSE_UNITS.map(u=><Chip key={u} label={u} selected={unit===u} onClick={()=>setUnit(u)} T={T}/>)}</div></div></div><Inp T={T} value={reason} onChange={e=>setReason(e.target.value)} placeholder="Reason" style={{marginBottom:10}}/><Inp T={T} value={givenBy} onChange={e=>setGivenBy(e.target.value)} placeholder="Given by" style={{marginBottom:12}}/><Btn T={T} onClick={logDose} variant="accent">+ Log dose</Btn></Card><SL T={T}>History</SL>{doses.length===0&&<div style={{fontSize:SP.fontSm,color:T.textDisabled,marginTop:8}}>No doses yet.</div>}{doses.map(d=>(<Card key={d.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"12px 16px"}}><div><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}><Tag T={T} color="info">{d.name}</Tag><Tag T={T}>{d.amount} {d.unit}</Tag>{d.givenBy&&<Tag T={T} color="accent">by {d.givenBy}</Tag>}</div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtDate(d.ts)} at {fmtTime(d.ts)}{d.reason?` · ${d.reason}`:""}</div></div><button onClick={()=>removeEntry("doses",d.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:20,padding:"0 0 0 8px"}}>×</button></Card>))}</>}
+    {subTab==="vacc"&&<>
+      <div style={{marginTop:12,background:T.bgLayer2,borderRadius:SP.radiusMd,padding:"14px 16px",border:`1px solid ${T.borderLight}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>Progress</div><Tag T={T} color={doneCount===totalCount?"positive":"info"}>{doneCount} / {totalCount}</Tag></div>
+        <div style={{background:T.bgLayer3,borderRadius:4,height:8,overflow:"hidden"}}><div style={{height:"100%",width:`${(doneCount/totalCount)*100}%`,background:T.positiveBg,borderRadius:4,transition:"width 0.4s"}}/></div>
+        {babyAgeWeeks!==null&&<div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:8}}>{state.babyName}: <strong style={{color:T.textPrimary}}>{babyAgeWeeks<52?`${babyAgeWeeks}w`:`${Math.floor(babyAgeWeeks/52)}y ${babyAgeWeeks%52}w`}</strong>{overdue.length>0&&<span style={{color:T.negativeBg,fontWeight:SP.weightBold}}> · {overdue.length} overdue</span>}{delayedCount>0&&<span style={{color:T.noticeBg,fontWeight:SP.weightBold}}> · {delayedCount} delayed</span>}{skippedCount>0&&<span style={{color:T.textSecondary}}> · {skippedCount} skipped</span>}</div>}
+      </div>
+      {overdue.length>0&&<><SL T={T}>Overdue</SL>{Object.entries(groupByAge(overdue)).map(([age,vaxes])=>(<Card key={age} T={T} style={{borderLeft:`3px solid ${T.negativeBg}`,paddingLeft:12}}><div style={{fontSize:SP.fontLabel,color:T.negativeBg,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>⚠ {age}</div>{vaxes.map(v=><VaccRow key={v.id} v={v} T={T} onMark={n=>markVacc(v.id,n)} onSkip={r=>skipVacc(v.id,r)} onDelay={(u,r)=>delayVacc(v.id,u,r)} note={vaccNote[v.id]||""} setNote={n=>setVaccNote(nv=>({...nv,[v.id]:n}))}/>)}</Card>))}</>}
+      {next.length>0&&<><SL T={T}>Upcoming</SL>{Object.entries(groupByAge(next.slice(0,16))).map(([age,vaxes])=>(<Card key={age} T={T}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>{age}</div>{vaxes.map(v=><VaccRow key={v.id} v={v} T={T} onMark={n=>markVacc(v.id,n)} onSkip={r=>skipVacc(v.id,r)} onDelay={(u,r)=>delayVacc(v.id,u,r)} note={vaccNote[v.id]||""} setNote={n=>setVaccNote(nv=>({...nv,[v.id]:n}))}/>)}</Card>))}</>}
+      {delayedCount>0&&<><SL T={T}>Delayed</SL>{VAX_SCHEDULE.filter(v=>vaccDelayed[v.id]).map(v=>(<Card key={v.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px"}}><div><div style={{display:"flex",gap:6,marginBottom:3}}><Tag T={T} color="notice">⏸ {v.name}</Tag><Tag T={T}>{v.dose}</Tag></div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{vaccDelayed[v.id].until?`Reschedule: ${vaccDelayed[v.id].until}`:fmtDate(vaccDelayed[v.id].ts)}</div></div><div style={{display:"flex",gap:6}}><Btn T={T} onClick={()=>markVacc(v.id,"")} variant="positive" size="sm">✓</Btn><Btn T={T} onClick={()=>undelayVacc(v.id)} variant="quiet" size="sm">↩</Btn></div></Card>))}</>}
+      {skippedCount>0&&<><SL T={T}>Skipped</SL>{VAX_SCHEDULE.filter(v=>vaccSkipped[v.id]).map(v=>(<Card key={v.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px"}}><div><div style={{display:"flex",gap:6,marginBottom:3}}><Tag T={T}>⊘ {v.name}</Tag><Tag T={T}>{v.dose}</Tag></div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtDate(vaccSkipped[v.id].ts)}</div></div><Btn T={T} onClick={()=>unskipVacc(v.id)} variant="quiet" size="sm">↩</Btn></Card>))}</>}
+      {doneCount>0&&<><SL T={T}>Completed ({doneCount})</SL>{VAX_SCHEDULE.filter(v=>vaccDone[v.id]).map(v=>(<Card key={v.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px"}}><div><div style={{display:"flex",gap:6,marginBottom:3}}><Tag T={T} color="positive">✓ {v.name}</Tag><Tag T={T}>{v.dose}</Tag></div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtDate(vaccDone[v.id].ts)}</div></div><button onClick={()=>unmarkVacc(v.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:20}}>×</button></Card>))}</>}
+    </>}
+  </div>);
+}
+
+function VaccRow({v,T,onMark,onSkip,onDelay,note,setNote}){
+  const [mode,setMode]=useState(null),[until,setUntil]=useState(""),[reason,setReason]=useState("");
+  const cancel=()=>{setMode(null);setUntil("");setReason("");};
+  return(<div style={{paddingBottom:10,marginBottom:10,borderBottom:`1px solid ${T.borderLight}`}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+      <div style={{flex:1,minWidth:0}}><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>{v.name} <span style={{color:T.textSecondary,fontWeight:SP.weightReg,fontSize:SP.fontSm}}>({v.dose})</span></div>{v.desc&&<div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:3}}>{v.desc}</div>}</div>
+      <div style={{flexShrink:0}}>{mode===null?(<div style={{display:"flex",gap:6}}><Btn T={T} onClick={()=>setMode("give")} variant="positive" size="sm">✓</Btn><Btn T={T} onClick={()=>setMode("delay")} variant="notice" size="sm">⏸</Btn><Btn T={T} onClick={()=>setMode("skip")} variant="secondary" size="sm">⊘</Btn></div>):(<Btn T={T} onClick={cancel} variant="quiet" size="sm">Cancel</Btn>)}</div>
+    </div>
+    {mode==="give"&&<div style={{marginTop:10,display:"flex",gap:8}}><Inp T={T} value={note} onChange={e=>setNote(e.target.value)} placeholder="Notes (clinic, batch, reaction...)" style={{flex:1}}/><Btn T={T} onClick={()=>{onMark(note);cancel();}} variant="positive" size="sm">Save</Btn></div>}
+    {mode==="delay"&&<div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}><div><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.06em"}}>Reschedule</div><Inp T={T} value={until} onChange={e=>setUntil(e.target.value)} type="date"/></div><div><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.06em"}}>Reason</div><Inp T={T} value={reason} onChange={e=>setReason(e.target.value)} placeholder="e.g. mild illness"/></div><div style={{gridColumn:"1/-1"}}><Btn T={T} onClick={()=>{onDelay(until,reason);cancel();}} variant="notice" size="sm">⏸ Confirm delay</Btn></div></div>}
+    {mode==="skip"&&<div style={{marginTop:10,display:"flex",gap:8}}><Inp T={T} value={reason} onChange={e=>setReason(e.target.value)} placeholder="Reason (optional)" style={{flex:1}}/><Btn T={T} onClick={()=>{onSkip(reason);cancel();}} variant="secondary" size="sm">⊘ Confirm skip</Btn></div>}
+  </div>);
+}
+
+const SYMPTOM_TYPES=["Fever","Fussiness","Rash","Congestion","Vomiting","Diarrhea","Poor feeding","Other"];
+function Symptoms({state,addEntry,removeEntry,T}){
+  const [type,setType]=useState("Fever"),[severity,setSeverity]=useState("mild"),[temp,setTemp]=useState(""),[note,setNote]=useState("");
+  const handleAdd=()=>{const e={type,severity};if(type==="Fever"&&temp)e.temp=temp+"°C";if(note)e.note=note;addEntry("symptoms",e);setTemp("");setNote("");};
+  return(<div><SL T={T}>Log a symptom</SL><Card T={T}><div style={{marginBottom:14}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Symptom</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{SYMPTOM_TYPES.map(t=><Chip key={t} label={t} selected={type===t} onClick={()=>setType(t)} T={T} color="negative"/>)}</div></div><div style={{marginBottom:14}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Severity</div><div style={{display:"flex",gap:8}}>{[["mild","positive"],["moderate","notice"],["severe","negative"]].map(([s,c])=><Chip key={s} label={s} selected={severity===s} onClick={()=>setSeverity(s)} T={T} color={c}/>)}</div></div>{type==="Fever"&&<div style={{marginBottom:14}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Temp (°C)</div><Inp T={T} value={temp} onChange={e=>setTemp(e.target.value)} type="number" step="0.1" placeholder="38.2" style={{width:140}}/></div>}<Inp T={T} value={note} onChange={e=>setNote(e.target.value)} placeholder="Notes..." style={{marginBottom:12}}/><Btn T={T} onClick={handleAdd} variant="negative">+ Log symptom</Btn></Card><SL T={T}>History</SL>{state.symptoms.map(s=>(<Card key={s.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"12px 16px"}}><div><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}><Tag T={T} color="negative">{s.type}</Tag><Tag T={T} color={s.severity==="mild"?"positive":s.severity==="moderate"?"notice":"negative"}>{s.severity}</Tag>{s.temp&&<Tag T={T}>{s.temp}</Tag>}</div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtDate(s.ts)} at {fmtTime(s.ts)}{s.note?` · ${s.note}`:""}</div></div><button onClick={()=>removeEntry("symptoms",s.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:20,padding:"0 0 0 8px"}}>×</button></Card>))}</div>);
+}
+
+const MILESTONES=["First smile","Holds head up","Rolls over","Sits unassisted","First laugh","First word","First steps","Recognized a face","Follows objects","Grasps objects"];
+function Growth({state,addEntry,removeEntry,T}){
+  const [w,setW]=useState(""),[h,setH]=useState(""),[hd,setHd]=useState(""),[note,setNote]=useState(""),[photo,setPhoto]=useState(null),[prev,setPrev]=useState(null);
+  const fRef=useRef();
+  const handlePhoto=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{setPhoto(ev.target.result);setPrev(ev.target.result);};r.readAsDataURL(f);};
+  const handleAdd=()=>{if(!w&&!h&&!hd)return;addEntry("growth",{weight:w?w+"kg":null,height:h?h+"cm":null,head:hd?hd+"cm":null,note,photo});setW("");setH("");setHd("");setNote("");setPhoto(null);setPrev(null);if(fRef.current)fRef.current.value="";};
+  return(<div><SL T={T}>Log a measurement</SL><Card T={T}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>{[["Weight(kg)",w,setW,"3.8"],["Height(cm)",h,setH,"52"],["Head(cm)",hd,setHd,"35"]].map(([label,val,setter,ph])=>(<div key={label}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</div><Inp T={T} value={val} onChange={e=>setter(e.target.value)} type="number" step="0.1" placeholder={ph}/></div>))}</div><Inp T={T} value={note} onChange={e=>setNote(e.target.value)} placeholder="Pediatrician note" style={{marginBottom:12}}/><div style={{marginBottom:14}}><label htmlFor="photo-in2" style={{padding:"10px 18px",borderRadius:SP.radiusPill,border:`1px solid ${T.borderMid}`,cursor:"pointer",fontSize:SP.fontSm,background:"transparent",color:T.textSecondary,fontWeight:SP.weightBold,display:"inline-flex",alignItems:"center",height:SP.touchH}}>📷 Photo</label><input ref={fRef} type="file" accept="image/*" capture="environment" onChange={handlePhoto} style={{display:"none"}} id="photo-in2"/>{prev&&<img src={prev} alt="preview" style={{width:44,height:44,borderRadius:SP.radiusMd,objectFit:"cover",border:`1px solid ${T.borderLight}`,marginLeft:10,verticalAlign:"middle"}}/>}{prev&&<button onClick={()=>{setPhoto(null);setPrev(null);}} style={{background:"none",border:"none",color:T.textDisabled,cursor:"pointer",fontSize:20,verticalAlign:"middle"}}>×</button>}</div><Btn T={T} onClick={handleAdd} variant="positive">+ Save measurement</Btn></Card><SL T={T}>Log</SL>{state.growth.map(g=>(<Card key={g.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"12px 16px"}}><div style={{display:"flex",gap:12}}>{g.photo&&<img src={g.photo} alt="" style={{width:44,height:44,borderRadius:SP.radiusMd,objectFit:"cover",flexShrink:0}}/>}<div><div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}>{g.weight&&<Tag T={T} color="info">⚖ {g.weight}</Tag>}{g.height&&<Tag T={T} color="positive">↕ {g.height}</Tag>}{g.head&&<Tag T={T}>◎ {g.head}</Tag>}</div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtDate(g.ts)}{g.note?` · ${g.note}`:""}</div></div></div><button onClick={()=>removeEntry("growth",g.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:20,padding:"0 0 0 8px"}}>×</button></Card>))}<SL T={T}>Milestones</SL><div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:8}}>{MILESTONES.map(m=>{const done=(state.milestones||[]).some(ml=>ml.text===m);return <Chip key={m} label={m} selected={done} onClick={()=>!done&&addEntry("milestones",{text:m})} T={T} color="positive"/>;})}</div></div>);
+}
+
+const TFS=[{label:"1M",days:30},{label:"3M",days:90},{label:"6M",days:180},{label:"1Y",days:365}];
+const METRICS=[{id:"feeding",label:"Feeding"},{id:"sleep",label:"Sleep"},{id:"weight",label:"Weight"}];
+function History({state,T}){
+  const [tf,setTf]=useState(0),[metric,setMetric]=useState("feeding"),[hover,setHover]=useState(null);
+  const svgRef=useRef();const W=460,H=200,PAD={t:20,r:16,b:36,l:46};
+  const cutoff=Date.now()-TFS[tf].days*864e5;
+  const points=(()=>{if(metric==="feeding"){const b={};state.feeding.filter(f=>new Date(f.ts)>cutoff).forEach(f=>{const d=fmtDate(f.ts);b[d]=(b[d]||0)+1;});return Object.entries(b).map(([d,v])=>({label:d,v,ts:new Date(d).getTime()})).sort((a,b)=>a.ts-b.ts);}if(metric==="sleep"){const b={};state.sleep.filter(s=>s.end&&new Date(s.ts)>cutoff).forEach(s=>{const d=fmtDate(s.ts);b[d]=(b[d]||0)+durationMins(s.ts,s.end);});return Object.entries(b).map(([d,v])=>({label:d,v:Math.round(v/60*10)/10,ts:new Date(d).getTime()})).sort((a,b)=>a.ts-b.ts);}return state.growth.filter(g=>g.weight&&new Date(g.ts)>cutoff).map(g=>({label:fmtDate(g.ts),v:parseFloat(g.weight),ts:new Date(g.ts).getTime()})).sort((a,b)=>a.ts-b.ts);})();
+  const minV=points.length?Math.min(...points.map(p=>p.v)):0,maxV=points.length?Math.max(...points.map(p=>p.v)):1,range=maxV-minV||1;
+  const gW=W-PAD.l-PAD.r,gH=H-PAD.t-PAD.b;
+  const px=i=>PAD.l+(i/Math.max(points.length-1,1))*gW,py=v=>PAD.t+gH-((v-minV)/range)*gH;
+  const path=points.map((p,i)=>`${i===0?"M":"L"}${px(i).toFixed(1)},${py(p.v).toFixed(1)}`).join(" ");
+  const area=points.length>1?`${path} L${px(points.length-1).toFixed(1)},${(PAD.t+gH).toFixed(1)} L${PAD.l},${(PAD.t+gH).toFixed(1)} Z`:"";
+  const handleMove=e=>{if(!svgRef.current||!points.length)return;const rect=svgRef.current.getBoundingClientRect();const mx=(e.clientX-rect.left)*(W/rect.width);let best=0,bestD=Infinity;points.forEach((p,i)=>{const d=Math.abs(px(i)-mx);if(d<bestD){bestD=d;best=i;}});setHover(best);};
+  const yL=[0,.25,.5,.75,1].map(t=>({v:minV+t*range,y:PAD.t+gH-t*gH}));
+  const unit=metric==="feeding"?"feeds":metric==="sleep"?"hrs":"kg";
+  return(<div><SL T={T}>History</SL><div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap",alignItems:"center"}}><Segmented T={T} options={METRICS.map(m=>({id:m.id,label:m.label}))} value={metric} onChange={v=>{setMetric(v);setHover(null);}}/><div style={{marginLeft:"auto",display:"flex",gap:4}}>{TFS.map((t,i)=><Chip key={t.label} label={t.label} selected={tf===i} onClick={()=>{setTf(i);setHover(null);}} T={T}/>)}</div></div><Card T={T} style={{padding:"16px 8px 8px",marginTop:10}}>{hover!==null&&points[hover]&&<div style={{textAlign:"center",marginBottom:10}}><span style={{fontSize:SP.fontXl,fontWeight:SP.weightBold,color:T.accentBg}}>{points[hover].v} {unit}</span><span style={{fontSize:SP.fontSm,color:T.textSecondary,marginLeft:10}}>{points[hover].label}</span></div>}{points.length<2?<div style={{textAlign:"center",color:T.textSecondary,fontSize:SP.fontMd,padding:"40px 0"}}>Not enough data yet.</div>:(<svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{width:"100%",cursor:"crosshair",touchAction:"none"}} onMouseMove={handleMove} onMouseLeave={()=>setHover(null)} onTouchMove={e=>{e.preventDefault();handleMove(e.touches[0]);}} onTouchEnd={()=>setHover(null)}><defs><linearGradient id="ag2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={T.chartLine} stopOpacity="0.3"/><stop offset="100%" stopColor={T.chartLine} stopOpacity="0.02"/></linearGradient></defs>{yL.map((l,i)=><g key={i}><line x1={PAD.l} y1={l.y} x2={W-PAD.r} y2={l.y} stroke={T.borderLight} strokeWidth="0.5" strokeDasharray="4,3"/><text x={PAD.l-6} y={l.y+4} fontSize="10" fill={T.textSecondary} textAnchor="end">{l.v.toFixed(metric==="weight"?1:0)}</text></g>)}{area&&<path d={area} fill="url(#ag2)"/>}{path&&<path d={path} fill="none" stroke={T.chartLine} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>}{points.map((p,i)=><circle key={i} cx={px(i)} cy={py(p.v)} r={hover===i?6:3} fill={hover===i?T.accentBg:T.bgLayer1} stroke={T.chartLine} strokeWidth={hover===i?2.5:1.5}/>)}{hover!==null&&points[hover]&&<line x1={px(hover)} y1={PAD.t} x2={px(hover)} y2={PAD.t+gH} stroke={T.accentBg} strokeWidth="1" strokeDasharray="4,3" opacity="0.7"/>}{(()=>{const step=Math.max(1,Math.floor(points.length/5));return points.filter((_,i)=>i%step===0||i===points.length-1).map(p=>{const orig=points.indexOf(p);return <text key={orig} x={px(orig)} y={H-4} fontSize="10" fill={T.textSecondary} textAnchor="middle">{p.label}</text>;});})()}</svg>)}</Card></div>);
+}
+
+function DoctorVisit({state,T}){
+  const last7=d=>new Date(d)>new Date(Date.now()-7*864e5);
+  const rF=state.feeding.filter(f=>last7(f.ts)),rS=state.sleep.filter(s=>s.end&&last7(s.ts)),rSym=state.symptoms.filter(s=>last7(s.ts)),rD=state.diapers.filter(d=>last7(d.ts));
+  const lg=state.growth[0],avgF=(rF.length/7).toFixed(1),avgSl=rS.length?(rS.reduce((a,s)=>a+durationMins(s.ts,s.end),0)/rS.length/60).toFixed(1):0;
+  const exportTxt=()=>{let t=`DEAR PENNY — DOCTOR VISIT SUMMARY\n${fmtDateFull(nowISO())}\n\nBABY: ${state.babyFullName||state.babyName}`;if(state.babyDOB)t+=`\nDOB: ${state.babyDOB}`;t+=`\n\nLAST 7 DAYS\nFeedings: ${rF.length} (avg ${avgF}/day)\nSleep: ${rS.length} (avg ${avgSl}h)\nDiapers: ${rD.length}`;if(rSym.length){t+="\n\nSYMPTOMS";rSym.forEach(s=>{t+=`\n- ${s.type} (${s.severity}) ${fmtDate(s.ts)}`;if(s.temp)t+=` ${s.temp}`;});}const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/plain"}));a.download="doctor_visit.txt";a.click();};
+  return(<div><SL T={T}>Doctor visit summary</SL><Card T={T}><div style={{fontSize:SP.fontLg,fontWeight:SP.weightBold,color:T.textPrimary,marginBottom:10}}>👶 {state.babyFullName||state.babyName}</div>{state.babyDOB&&<div style={{fontSize:SP.fontSm,color:T.textSecondary}}>DOB: {state.babyDOB}</div>}</Card>{lg&&<Card T={T}><div style={{fontSize:SP.fontSm,fontWeight:SP.weightBold,color:T.textSecondary,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Latest measurements</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{lg.weight&&<Tag T={T} color="info">⚖ {lg.weight}</Tag>}{lg.height&&<Tag T={T} color="positive">↕ {lg.height}</Tag>}{lg.head&&<Tag T={T}>◎ {lg.head}</Tag>}</div></Card>}<Card T={T}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><StatCard T={T} label="Feedings" value={rF.length} sub={`avg ${avgF}/day`} color="blue"/><StatCard T={T} label="Diapers" value={rD.length} sub="changes" color="amber"/><StatCard T={T} label="Sleep" value={rS.length} sub={`avg ${avgSl}h`} color="purple"/><StatCard T={T} label="Symptoms" value={rSym.length} sub={rSym.length?"logged":"none"} color={rSym.length?"red":"gray"}/></div></Card><div style={{display:"flex",gap:10,marginTop:16}}><Btn T={T} onClick={exportTxt} variant="accent">Download summary</Btn><Btn T={T} onClick={()=>window.print()} variant="secondary">Print</Btn></div></div>);
+}
+
+function ContractionTimer({state,update,T}){
+  const contractions=state.contractions||[];
+  const [active,setActive]=useState(false),[startTs,setStartTs]=useState(null),[elapsed,setElapsed]=useState(0);
+  const tRef=useRef();
+  useEffect(()=>{if(!active){clearInterval(tRef.current);return;}tRef.current=setInterval(()=>setElapsed(Math.round((Date.now()-startTs)/1000)),500);return()=>clearInterval(tRef.current);},[active,startTs]);
+  const start=()=>{const ts=Date.now();setStartTs(ts);setActive(true);setElapsed(0);};
+  const stop=()=>{if(!startTs)return;const dur=Math.round((Date.now()-startTs)/1000);const prev=contractions[contractions.length-1];const gap=prev?Math.round((startTs-new Date(prev.ts).getTime()-prev.duration*1000)/1000):null;update("contractions",[...contractions,{id:Date.now(),ts:new Date(startTs).toISOString(),duration:dur,gap}]);setActive(false);setStartTs(null);setElapsed(0);};
+  const avgDur=contractions.length?Math.round(contractions.slice(-5).reduce((a,c)=>a+c.duration,0)/Math.min(contractions.length,5)):0;
+  const avgGap=contractions.filter(c=>c.gap).length?Math.round(contractions.filter(c=>c.gap).slice(-5).reduce((a,c)=>a+c.gap,0)/Math.min(contractions.filter(c=>c.gap).length,5)):0;
+  const freq511=avgGap>0&&avgGap<=300&&avgDur>=45;
+  return(<div><SL T={T}>Contraction timer</SL>{freq511&&<div style={{background:`${T.negativeBg}22`,border:`1.5px solid ${T.negativeBg}`,borderRadius:SP.radiusMd,padding:"12px 16px",marginTop:12,color:T.negativeBg,fontSize:SP.fontSm,fontWeight:SP.weightBold}}>⚠ 5-1-1 pattern detected!</div>}<Card T={T} style={{textAlign:"center",padding:"24px 16px"}}><div style={{fontSize:56,fontWeight:SP.weightBold,color:active?T.negativeBg:T.accentBg,marginBottom:6,lineHeight:1}}>{fmtSecs(elapsed)}</div><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginBottom:20}}>{active?"In progress...":"Tap to start"}</div><button onClick={active?stop:start} style={{width:130,height:130,borderRadius:"50%",border:`3px solid ${active?T.negativeBg:T.accentBg}`,background:active?`${T.negativeBg}18`:`${T.accentBg}18`,cursor:"pointer",fontSize:SP.fontLg,fontWeight:SP.weightBold,color:active?T.negativeBg:T.accentBg}}>{active?"STOP":"START"}</button></Card>{contractions.length>0&&<><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}><StatCard T={T} label="Total" value={contractions.length} sub="contractions" color="red"/><StatCard T={T} label="Avg duration" value={avgDur>0?`${avgDur}s`:"—"} sub="last 5" color="amber"/><StatCard T={T} label="Avg gap" value={avgGap>0?fmtSecs(avgGap):"—"} sub="between" color="purple"/><StatCard T={T} label="5-1-1" value={freq511?"Yes":"Not yet"} sub={freq511?"Call provider!":"Keep timing"} color={freq511?"red":"gray"}/></div><SL T={T}>Recent</SL>{contractions.slice(-5).reverse().map((c,i)=>(<Card key={c.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"12px 16px"}}><div><div style={{display:"flex",gap:6,marginBottom:4}}><Tag T={T} color="negative">{c.duration}s</Tag>{c.gap&&<Tag T={T}>{fmtSecs(c.gap)} gap</Tag>}</div><div style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtTime(c.ts)}</div></div><span style={{fontSize:SP.fontSm,color:T.textSecondary}}>#{contractions.length-i}</span></Card>))}<div style={{marginTop:12}}><Btn T={T} onClick={()=>update("contractions",[])} variant="quiet" size="sm">Clear all</Btn></div></>}</div>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
