@@ -627,50 +627,45 @@ const [showForm,setShowForm]=useState(false);
 const [expanded,setExpanded]=useState({});
 const toggleExpand=id=>setExpanded(e=>({...e,[id]:!e[id]}));
 
-// Print summary (since last visit)
-const printSummary=()=>{
-const win=window.open("","_blank");if(!win)return;
+// Email summary
+const emailSummary=()=>{
 const sinceLabel=lastVisitTs?`since ${fmtDateFull(lastVisitTs)}`:"all time";
-const html=`<!DOCTYPE html><html><head><title>DearPenny — Doctor Summary</title>
-<style>body{font-family:sans-serif;padding:24px;max-width:600px;}h1{font-size:20px;}h2{font-size:15px;color:#555;margin-top:20px;}p{margin:4px 0 8px;}table{width:100%;border-collapse:collapse;margin-top:8px;}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #eee;}th{font-size:11px;color:#888;text-transform:uppercase;}</style>
-</head><body>
-<h1>DearPenny — Doctor Visit Summary</h1>
-<p><strong>Baby:</strong> ${state.babyFullName||state.babyName}</p>
-<p><strong>Period:</strong> ${sinceLabel}</p>
-<p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-${lastVisit?`<h2>Last Visit</h2><p><strong>Date:</strong> ${fmtDateFull(lastVisitTs)}<br/><strong>Doctor:</strong> ${lastVisit.doctor||"—"}<br/><strong>Reason:</strong> ${lastVisit.reason||"—"}<br/><strong>Notes:</strong> ${lastVisit.notes||"—"}</p>`:""}
-${nextApptDate?`<p><strong>Next appointment:</strong> ${lastVisit.nextAppt}</p>`:""}
-<h2>Feedings (${sinceFeedings.length})</h2>
-<table><tr><th>Date</th><th>Type</th><th>Details</th></tr>
-${sinceFeedings.slice(0,20).map(f=>`<tr><td>${fmtDate(f.ts)} ${fmtTime(f.ts)}</td><td>${f.type}</td><td>${f.side||f.amount||f.food||"—"}</td></tr>`).join("")}
-</table>
-<h2>Diapers (${sinceDiapers.length})</h2>
-<table><tr><th>Date</th><th>Time</th><th>Type</th></tr>
-${sinceDiapers.slice(0,20).map(d=>`<tr><td>${fmtDate(d.ts)}</td><td>${fmtTime(d.ts)}</td><td>${d.type}</td></tr>`).join("")}
-</table>
-<h2>Symptoms (${sinceSymptoms.length})</h2>
-<table><tr><th>Date</th><th>Type</th><th>Severity</th><th>Temp</th><th>Note</th></tr>
-${sinceSymptoms.map(s=>`<tr><td>${fmtDate(s.ts)}</td><td>${s.type}</td><td>${s.severity}</td><td>${s.temp||"—"}</td><td>${s.note||"—"}</td></tr>`).join("")}
-</table>
-<h2>Sleep — ${fmtDur(totalSleepMins)} total (${sinceSleep.length} sessions)</h2>
-<table><tr><th>Date</th><th>Start</th><th>End</th><th>Duration</th></tr>
-${sinceSleep.slice(0,20).map(s=>`<tr><td>${fmtDate(s.ts)}</td><td>${fmtTime(s.ts)}</td><td>${fmtTime(s.end)}</td><td>${fmtDur(durationMins(s.ts,s.end))}</td></tr>`).join("")}
-</table>
-<h2>Growth</h2>
-<table><tr><th>Date</th><th>Weight</th><th>Height</th><th>Head</th></tr>
-${state.growth.slice(0,5).map(g=>`<tr><td>${fmtDateFull(g.ts)}</td><td>${g.weight||"—"}kg</td><td>${g.height||"—"}cm</td><td>${g.head||"—"}cm</td></tr>`).join("")}
-</table>
-</body></html>`;
-win.document.write(html);win.document.close();win.print();
-};
-
-const downloadCSV=()=>{
-const rows=[["Date","Doctor","Reason","Notes","Next Appointment"],...visits.map(v=>[fmtDateFull(v.visitDate||v.ts),v.doctor||"",v.reason||"",v.notes||"",v.nextAppt||""])];
-const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
-const blob=new Blob([csv],{type:"text/csv"});
-const url=URL.createObjectURL(blob);
-const a=document.createElement("a");a.href=url;a.download=`dearpenny-visits-${new Date().toISOString().slice(0,10)}.csv`;a.click();
-URL.revokeObjectURL(url);
+const subject=encodeURIComponent(`${state.babyFullName||state.babyName} — Doctor Visit Summary`);
+const body=encodeURIComponent([
+`DearPenny — Doctor Visit Summary`,
+`Baby: ${state.babyFullName||state.babyName}`,
+`Generated: ${new Date().toLocaleString()}`,
+`Period: ${sinceLabel}`,
+``,
+lastVisit?[
+`LAST VISIT`,
+`Date: ${fmtDateFull(lastVisitTs)}`,
+`Doctor: ${lastVisit.doctor||"—"}`,
+`Reason: ${lastVisit.reason||"—"}`,
+`Notes: ${lastVisit.notes||"—"}`,
+nextApptDate?`Next appointment: ${lastVisit.nextAppt}`:"",
+``
+].filter(Boolean).join("\n"):"",
+`ACTIVITY ${sinceLabel.toUpperCase()}`,
+`Feedings: ${sinceFeedings.length}`,
+`Diapers: ${sinceDiapers.length}`,
+`Sleep: ${fmtDur(totalSleepMins)} (${sinceSleep.length} sessions)`,
+`Symptoms: ${sinceSymptoms.length}`,
+``,
+sinceSymptoms.length>0?[
+`SYMPTOMS`,
+...sinceSymptoms.map(s=>`• ${fmtDate(s.ts)} — ${s.type} (${s.severity})${s.temp?` — ${s.temp}°C`:""}${s.note?` — ${s.note}`:""}`)
+,``].join("\n"):"",
+sinceFeedings.length>0?[
+`RECENT FEEDINGS (last 10)`,
+...sinceFeedings.slice(0,10).map(f=>`• ${fmtDate(f.ts)} ${fmtTime(f.ts)} — ${f.type}${f.side?` (${f.side})`:""}${f.amount?` ${f.amount}`:""}${f.food?` — ${f.food}`:""}`)
+,``].join("\n"):"",
+state.growth.length>0?[
+`GROWTH`,
+...state.growth.slice(0,3).map(g=>`• ${fmtDateFull(g.ts)}${g.weight?` — ${g.weight}kg`:""}${g.height?` — ${g.height}cm`:""}${g.head?` — head ${g.head}cm`:""}`)
+].join("\n"):""
+].filter(Boolean).join("\n"));
+window.location.href=`mailto:?subject=${subject}&body=${body}`;
 };
 
 const logVisit=()=>{
@@ -714,11 +709,11 @@ return(<div key={label} style={{background:T.bgLayer2,borderRadius:SP.radiusMd,p
 </div>}
 </Card>
 
-{/* Print / Download */}
-<div style={{display:"flex",gap:8,marginTop:12}}>
-<Btn T={T} onClick={printSummary} variant="secondary">🖨 Print summary</Btn>
-<Btn T={T} onClick={downloadCSV} variant="secondary">⬇ Download CSV</Btn>
-</div>
+{/* Email summary button */}
+{visits.length>0&&<button onClick={emailSummary} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%",marginTop:12,padding:"14px 20px",borderRadius:SP.radiusLg,border:`1.5px solid ${T.accentBg}`,background:`${T.accentBg}18`,color:T.accentBg,fontSize:SP.fontMd,fontWeight:SP.weightBold,cursor:"pointer"}}>
+<span style={{fontSize:20}}>✉️</span>
+<span>Email visit summary to doctor</span>
+</button>}
 
 {/* Log visit form */}
 <div style={{marginTop:12}}>
