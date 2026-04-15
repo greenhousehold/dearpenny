@@ -293,7 +293,27 @@ try{const{sheetId,url}=await gSheetsSync({...state,gClientId:clientId},token);up
 setSyncing(false);
 }
 };
-window.addEventListener("message",handler);return()=>window.removeEventListener("message",handler);
+window.addEventListener("message",handler);
+
+// Also poll localStorage for token from Custom Tab fallback
+const poll=setInterval(()=>{
+try{
+const raw=localStorage.getItem("dearpenny_oauth_token");
+if(!raw)return;
+const {token,ts}=JSON.parse(raw);
+if(Date.now()-ts>120000)return; // ignore if older than 2 min
+localStorage.removeItem("dearpenny_oauth_token");
+clearInterval(poll);
+update("gAccessToken",token);
+setSheetStatus("syncing");setSyncing(true);
+gSheetsSync({...state,gClientId:clientId},token)
+  .then(({sheetId,url})=>{update("gSheetId",sheetId);update("gClientId",clientId);setSheetUrl(url);setSheetStatus("success");})
+  .catch(()=>setSheetStatus("error"))
+  .finally(()=>setSyncing(false));
+}catch(e){}
+},1000);
+
+return()=>{window.removeEventListener("message",handler);clearInterval(poll);};
 },[state,clientId]);
 
 const connectGoogle=()=>{
