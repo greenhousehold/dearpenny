@@ -298,7 +298,7 @@ window.addEventListener("message",handler);return()=>window.removeEventListener(
 
 const connectGoogle=()=>{
 if(!clientId.trim()){setSheetStatus("noclientid");return;}
-const params=new URLSearchParams({client_id:clientId,redirect_uri:"https://greenhousehold.github.io/oauth.html",response_type:"token",scope:"https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file"});
+const params=new URLSearchParams({client_id:clientId,redirect_uri:"https://greenhousehold.github.io/oauth.html",response_type:"token",scope:"https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",prompt:"select_account"});
 window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`,"GoogleOAuth","width=500,height=600");
 setSheetStatus("waiting");
 };
