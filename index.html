@@ -666,6 +666,16 @@ return(<div key={label} style={{background:T.bgLayer2,borderRadius:SP.radiusMd,p
 </div>);
 })}
 </div>
+{sinceSymptoms.length>0&&<div style={{marginTop:10}}>
+<div style={{fontSize:SP.fontLabel,color:T.negativeBg,fontWeight:SP.weightBold,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em"}}>Symptoms</div>
+{sinceSymptoms.map(s=>(
+<div key={s.id} style={{fontSize:SP.fontSm,color:T.textSecondary,paddingBottom:6,marginBottom:6,borderBottom:`1px solid ${T.borderLight}`}}>
+<span style={{color:s.severity==="severe"?T.negativeBg:s.severity==="moderate"?T.noticeBg:T.positiveBg,fontWeight:SP.weightBold}}>{s.type}</span>
+{` · ${s.severity}`}{s.temp?` · 🌡 ${s.temp}°C`:""}{s.note?` · ${s.note}`:""}
+<span style={{color:T.textDisabled,marginLeft:6}}>{fmtDate(s.ts)}</span>
+</div>
+))}
+</div>}
 </Card>
 
 {/* Print / Download */}
@@ -718,11 +728,18 @@ return(<Card key={v.id} T={T} style={{marginTop:8}}>
 {v.reason&&<div style={{fontSize:SP.fontSm,color:T.textSecondary,marginBottom:4}}><strong>Reason:</strong> {v.reason}</div>}
 {v.notes&&<div style={{fontSize:SP.fontSm,color:T.textSecondary,marginBottom:4}}><strong>Notes:</strong> {v.notes}</div>}
 {v.nextAppt&&<div style={{marginBottom:8}}><Tag T={T} color="info">Next appt: {v.nextAppt}</Tag></div>}
-<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:vSymptoms.length>0?6:8}}>
 <Tag T={T} color="info">{vFeedings.length} feedings</Tag>
 <Tag T={T} color="notice">{vDiapers.length} diapers</Tag>
 {vSymptoms.length>0&&<Tag T={T} color="negative">{vSymptoms.length} symptoms</Tag>}
 </div>
+{vSymptoms.length>0&&<div style={{marginBottom:8}}>{vSymptoms.map(s=>(
+<div key={s.id} style={{fontSize:SP.fontSm,color:T.textSecondary,paddingBottom:4,marginBottom:4,borderBottom:`1px solid ${T.borderLight}`}}>
+<span style={{color:s.severity==="severe"?T.negativeBg:s.severity==="moderate"?T.noticeBg:T.positiveBg,fontWeight:SP.weightBold}}>{s.type}</span>
+{` · ${s.severity}`}{s.temp?` · 🌡 ${s.temp}°C`:""}{s.note?` · ${s.note}`:""}
+<span style={{color:T.textDisabled,marginLeft:6}}>{fmtDate(s.ts)}</span>
+</div>
+))}</div>}
 <button onClick={e=>{e.stopPropagation();removeEntry("doctorVisits",v.id);}} style={{background:"none",border:"none",cursor:"pointer",color:T.negativeBg,fontSize:SP.fontSm,padding:0}}>Delete visit</button>
 </div>}
 </Card>);
