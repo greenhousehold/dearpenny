@@ -1,7 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>DearPenny — Signing in...</title>
+  <style>
+    body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#1e1e1e;color:#fff;}
+    p{font-size:16px;color:#c0c0c0;margin-top:12px;}
+    .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,0.1);border-top-color:#2680eb;border-radius:50%;animation:spin 0.8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p id="msg">Completing sign-in…</p>
+
 <script>
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-  const token = params.get('access_token');
-  if (token) window.opener.postMessage({type:'DEARPENNY_OAUTH', accessToken: token}, '*');
-  window.close();
+  (function(){
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const token = params.get('access_token');
+    const error = params.get('error');
+
+    if (error) {
+      document.getElementById('msg').textContent = 'Sign-in failed: ' + error;
+      return;
+    }
+
+    if (!token) {
+      document.getElementById('msg').textContent = 'No token found. Please try again.';
+      return;
+    }
+
+    const payload = { type: 'DEARPENNY_OAUTH', accessToken: token };
+
+    // Try window.opener first (popup flow)
+    if (window.opener) {
+      try {
+        window.opener.postMessage(payload, '*');
+        document.getElementById('msg').textContent = 'Signed in! You can close this tab.';
+        setTimeout(() => window.close(), 1000);
+        return;
+      } catch(e) {}
+    }
+
+    // Fallback: store in localStorage so the main app can pick it up
+    // (used when Chrome Custom Tab loses the opener reference)
+    try {
+      localStorage.setItem('dearpenny_oauth_token', JSON.stringify({
+        token: token,
+        ts: Date.now()
+      }));
+      document.getElementById('msg').textContent = 'Signed in! Returning to app…';
+      // Try to navigate back to the app
+      setTimeout(() => {
+        window.location.href = 'https://greenhousehold.github.io/dearpenny/';
+      }, 800);
+    } catch(e) {
+      document.getElementById('msg').textContent = 'Signed in! Please return to the app.';
+    }
+  })();
 </script>
+</body>
+</html>
