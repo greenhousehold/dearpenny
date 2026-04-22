@@ -178,7 +178,7 @@ const [tab,setTab]=useState("dashboard");
 const [editMode,setEditMode]=useState(false);
 const [onboarded,setOnboarded]=useState(()=>{try{return !!JSON.parse(localStorage.getItem("dear_penny_v1"))?.onboarded;}catch{return false;}});
 const reminderRef=useRef(null);
-const T=S2[state.theme||"dark"];
+const T=S2[state.theme||"light"]||S2.light;
 
 useEffect(()=>saveState(state),[state]);
 
@@ -358,7 +358,35 @@ setSyncing(false);
 return(<div>
 <SL T={T}>Baby details</SL><BabySetup state={state} update={update} T={T}/>
 <SL T={T}>Appearance</SL>
-<Card T={T}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>Theme</div><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:2}}>{state.theme==="dark"?"Dark mode":"Light mode"}</div></div><button onClick={()=>update("theme",state.theme==="dark"?"light":"dark")} style={{padding:"8px 18px",borderRadius:SP.radiusPill,border:`1px solid ${T.borderMid}`,cursor:"pointer",fontSize:SP.fontSm,background:T.subtleBg,color:T.textSecondary,fontWeight:SP.weightBold}}>{state.theme==="dark"?"☀ Light":"🌙 Dark"}</button></div></Card>
+<Card T={T}>
+<div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary,marginBottom:14}}>Choose a theme</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+{[
+{id:"light",name:"🍊 Peachy",desc:"Warm cream & orange"},
+{id:"dark",name:"🔥 Ember",desc:"Deep warm dark"},
+{id:"ocean",name:"🌊 Ocean",desc:"Cool blue & cyan"},
+{id:"mint",name:"🌿 Mint",desc:"Fresh green & teal"},
+{id:"lavender",name:"💜 Lavender",desc:"Soft purple & pink"},
+{id:"midnight",name:"🌙 Midnight",desc:"Deep navy & indigo"},
+{id:"rose",name:"🌸 Rose",desc:"Blush pink & red"},
+].map(th=>{
+const themeColors=S2[th.id];
+const isSelected=state.theme===th.id;
+return(
+<button key={th.id} onClick={()=>update("theme",th.id)} style={{background:themeColors.bgLayer2,borderRadius:SP.radiusLg,padding:"12px 14px",border:`3px solid ${isSelected?themeColors.accentBg:"transparent"}`,cursor:"pointer",textAlign:"left",boxShadow:isSelected?`0 4px 14px ${themeColors.accentBg}44`:"0 2px 8px rgba(0,0,0,0.06)",transition:"all 0.2s"}}>
+<div style={{display:"flex",gap:6,marginBottom:8}}>
+{[themeColors.accentBg,themeColors.positiveBg,themeColors.noticeBg].map((c,i)=>(
+<div key={i} style={{width:16,height:16,borderRadius:"50%",background:c}}/>
+))}
+</div>
+<div style={{fontSize:SP.fontSm,fontWeight:SP.weightBold,color:themeColors.textPrimary,marginBottom:2}}>{th.name}</div>
+<div style={{fontSize:"11px",color:themeColors.textSecondary}}>{th.desc}</div>
+{isSelected&&<div style={{marginTop:6,fontSize:"10px",color:themeColors.accentBg,fontWeight:SP.weightBold}}>✓ Active</div>}
+</button>
+);
+})}
+</div>
+</Card>
 <SL T={T}>Feeding reminder</SL>
 <Card T={T}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:notifStatus==="granted"?12:0}}>
@@ -801,7 +829,11 @@ const avgGap=cons.length>1?Math.round(cons.slice(0,-1).reduce((a,c,i)=>{const ne
 return(<div><SL T={T}>Contraction timer</SL><Card T={T} style={{textAlign:"center",padding:"24px 16px"}}>
 {!active?<Btn T={T} onClick={start} variant="accent" full>Start contraction</Btn>:<><div style={{fontSize:44,fontWeight:SP.weightBold,color:T.negativeBg,marginBottom:16}}>{fmtSecs(Math.round((Date.now()-active.start)/1000))}</div><Btn T={T} onClick={stop} variant="notice" full>Stop</Btn></>}
 </Card>
-{cons.length>0&&<><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}><StatCard T={T} label="Contractions" value={cons.length} color="red"/><StatCard T={T} label="Avg gap" value={avgGap?fmtSecs(avgGap):"—"} color="amber"/></div><SL T={T}>Log</SL>{cons.slice(0,10).map(c=>(<Card key={c.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px"}}><div><Tag T={T} color="negative">{fmtSecs(c.duration)}</Tag></div><span style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtTime(c.ts)}</span></Card>))}</>}
+{cons.length>0&&<><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}><StatCard T={T} label="Contractions" value={cons.length} color="red"/><StatCard T={T} label="Avg gap" value={avgGap?fmtSecs(avgGap):"—"} color="amber"/></div>
+<div style={{marginTop:12}}>
+<Btn T={T} onClick={()=>update("contractions",[])} variant="secondary" full>🔄 Reset &amp; start new session</Btn>
+</div>
+<SL T={T}>Log</SL>{cons.slice(0,10).map(c=>(<Card key={c.id} T={T} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px"}}><div><Tag T={T} color="negative">{fmtSecs(c.duration)}</Tag></div><span style={{fontSize:SP.fontSm,color:T.textSecondary}}>{fmtTime(c.ts)}</span></Card>))}</> }
 </div>);
 }
 
