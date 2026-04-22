@@ -34,7 +34,7 @@
 
     const payload = { type: 'DEARPENNY_OAUTH', accessToken: token };
 
-    // Try window.opener first (popup flow)
+    // Try window.opener first (desktop popup flow)
     if (window.opener) {
       try {
         window.opener.postMessage(payload, '*');
@@ -44,20 +44,18 @@
       } catch(e) {}
     }
 
-    // Fallback: store in localStorage so the main app can pick it up
-    // (used when Chrome Custom Tab loses the opener reference)
+    // Mobile flow — store token and redirect back to app
     try {
       localStorage.setItem('dearpenny_oauth_token', JSON.stringify({
         token: token,
         ts: Date.now()
       }));
       document.getElementById('msg').textContent = 'Signed in! Returning to app…';
-      // Try to navigate back to the app
       setTimeout(() => {
         window.location.href = 'https://greenhousehold.github.io/dearpenny/';
-      }, 800);
+      }, 600);
     } catch(e) {
-      document.getElementById('msg').textContent = 'Signed in! Please return to the app.';
+      document.getElementById('msg').textContent = 'Signed in! Please return to the app manually.';
     }
   })();
 </script>
