@@ -13,31 +13,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.10/babel.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{background:#1e1e1e;font-family:-apple-system,system-ui,sans-serif;overscroll-behavior:none;}
+body{background:#FFF8F0;font-family:-apple-system,system-ui,"Segoe UI",sans-serif;overscroll-behavior:none;}
 input,button,select{font-family:inherit;}
-input::placeholder{opacity:0.5;}
+input::placeholder{opacity:0.45;}
 ::-webkit-scrollbar{display:none;}
+button:active{transform:scale(0.97);}
 
-/* #1 Landscape & #2 Fold support */
 @media (orientation:landscape){
   #root .app-scroll{padding-bottom:70px;}
-  #root nav{flex-wrap:nowrap;}
 }
-@media (max-width:360px){
-  #root nav button span.nav-label{font-size:8px;}
-}
-/* Galaxy Fold unfolded wide layout */
 @media (min-width:600px){
   #root .app-wrap{max-width:700px;}
   #root nav button{min-width:9%;}
 }
 
-/* #9 Fix nav icon sizes */
 nav button .nav-icon{font-size:18px!important;line-height:1;display:block;text-align:center;}
 nav button .nav-label{font-size:9px;display:block;text-align:center;}
 
-/* #6 Drag widget styles */
-.widget-drag-over{border:2px dashed #2680eb!important;opacity:0.7;}
+.widget-drag-over{outline:3px dashed #F97316!important;opacity:0.7;border-radius:24px;}
 .widget-dragging{opacity:0.4;}
 </style>
 </head>
@@ -47,10 +40,10 @@ nav button .nav-label{font-size:9px;display:block;text-align:center;}
 const {useState,useEffect,useCallback,useRef}=React;
 
 const S2={
-dark:{bgBase:"#1e1e1e",bgLayer1:"#2c2c2c",bgLayer2:"#3a3a3a",bgLayer3:"#444",textPrimary:"#fff",textSecondary:"#c0c0c0",textDisabled:"#6a6a6a",borderLight:"rgba(255,255,255,0.12)",borderMid:"rgba(255,255,255,0.2)",accentBg:"#2680eb",accentText:"#fff",positiveBg:"#2d9d78",positiveText:"#fff",noticeBg:"#e68619",noticeText:"#fff",negativeBg:"#e34850",negativeText:"#fff",tagBg:"rgba(255,255,255,0.1)",tagText:"#d0d0d0",inputBg:"#2c2c2c",inputBorder:"rgba(255,255,255,0.25)",subtleBg:"rgba(255,255,255,0.06)",selectedBg:"rgba(70,130,220,0.25)",chartLine:"#4b9cf5",statusBar:"#2c2c2c"},
-light:{bgBase:"#f8f8f8",bgLayer1:"#fff",bgLayer2:"#f3f3f3",bgLayer3:"#e8e8e8",textPrimary:"#1a1a1a",textSecondary:"#555",textDisabled:"#aaa",borderLight:"rgba(0,0,0,0.1)",borderMid:"rgba(0,0,0,0.18)",accentBg:"#2680eb",accentText:"#fff",positiveBg:"#268e6c",positiveText:"#fff",noticeBg:"#cb6f10",noticeText:"#fff",negativeBg:"#d7373f",negativeText:"#fff",tagBg:"rgba(0,0,0,0.06)",tagText:"#444",inputBg:"#fff",inputBorder:"rgba(0,0,0,0.25)",subtleBg:"rgba(0,0,0,0.04)",selectedBg:"rgba(38,128,235,0.12)",chartLine:"#2680eb",statusBar:"#fff"}
+dark:{bgBase:"#1A0A00",bgLayer1:"#2D1810",bgLayer2:"#3D2418",bgLayer3:"#4D3020",textPrimary:"#FFF8F0",textSecondary:"#D4956A",textDisabled:"#7A5540",borderLight:"rgba(249,115,22,0.15)",borderMid:"rgba(249,115,22,0.25)",accentBg:"#F97316",accentText:"#fff",positiveBg:"#16A34A",positiveText:"#fff",noticeBg:"#9333EA",noticeText:"#fff",negativeBg:"#DC2626",negativeText:"#fff",tagBg:"rgba(249,115,22,0.15)",tagText:"#FB923C",inputBg:"#2D1810",inputBorder:"rgba(249,115,22,0.3)",subtleBg:"rgba(249,115,22,0.08)",selectedBg:"rgba(249,115,22,0.2)",chartLine:"#F97316",statusBar:"#1A0A00"},
+light:{bgBase:"#FFF8F0",bgLayer1:"#FFFFFF",bgLayer2:"#FFF0E6",bgLayer3:"#FFE4CC",textPrimary:"#1C0A00",textSecondary:"#78350F",textDisabled:"#C4956A",borderLight:"rgba(249,115,22,0.15)",borderMid:"rgba(249,115,22,0.3)",accentBg:"#F97316",accentText:"#fff",positiveBg:"#16A34A",positiveText:"#fff",noticeBg:"#9333EA",noticeText:"#fff",negativeBg:"#DC2626",negativeText:"#fff",tagBg:"rgba(249,115,22,0.12)",tagText:"#C2410C",inputBg:"#FFFFFF",inputBorder:"rgba(249,115,22,0.35)",subtleBg:"rgba(249,115,22,0.06)",selectedBg:"rgba(249,115,22,0.15)",chartLine:"#F97316",statusBar:"#FFF8F0"}
 };
-const SP={radiusSm:"8px",radiusMd:"12px",radiusLg:"16px",radiusPill:"999px",fontSm:"13px",fontMd:"15px",fontLg:"17px",fontXl:"22px",fontLabel:"11px",weightReg:400,weightMed:500,weightBold:700,touchH:"44px"};
+const SP={radiusSm:"12px",radiusMd:"16px",radiusLg:"24px",radiusPill:"999px",fontSm:"13px",fontMd:"15px",fontLg:"17px",fontXl:"22px",fontLabel:"11px",weightReg:400,weightMed:500,weightBold:700,touchH:"48px"};
 const DEFAULT_WIDGET_ORDER=["status","monitor","diaper","reminder","feedings"];
 const NAV=[
 {id:"dashboard",label:"Home",icon:"⊞"},{id:"feeding",label:"Feed",icon:"⊕"},
@@ -133,29 +126,30 @@ const fmtDur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;
 const fmtSecs=s=>`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
 // ── Shared UI ─────────────────────────────────────────────────
-function Card({children,T,style}){return <div style={{background:T.bgLayer1,border:`1px solid ${T.borderLight}`,borderRadius:SP.radiusLg,padding:"14px 16px",marginTop:12,...style}}>{children}</div>;}
-function SL({children,T}){return <div style={{fontSize:SP.fontLabel,fontWeight:SP.weightBold,color:T.textSecondary,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:22,marginBottom:6}}>{children}</div>;}
-function Btn({onClick,children,variant="accent",size="md",full,T,disabled}){
-const v={accent:{bg:T.accentBg,color:T.accentText,border:"none"},positive:{bg:T.positiveBg,color:T.positiveText,border:"none"},negative:{bg:T.negativeBg,color:T.negativeText,border:"none"},notice:{bg:T.noticeBg,color:T.noticeText,border:"none"},secondary:{bg:"transparent",color:T.textPrimary,border:`1px solid ${T.borderMid}`},quiet:{bg:T.subtleBg,color:T.textSecondary,border:"none"}}[variant]||{bg:T.accentBg,color:T.accentText,border:"none"};
-return <button onClick={onClick} disabled={disabled} style={{background:v.bg,color:v.color,border:v.border,borderRadius:SP.radiusPill,padding:size==="sm"?"6px 14px":"10px 20px",fontSize:size==="sm"?SP.fontSm:SP.fontMd,fontWeight:SP.weightBold,height:size==="sm"?"32px":SP.touchH,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,width:full?"100%":"auto",lineHeight:1}}>{children}</button>;
+function Card({children,T,style}){return <div style={{background:T.bgLayer1,borderRadius:SP.radiusLg,padding:"16px 18px",marginTop:14,boxShadow:`0 2px 12px rgba(249,115,22,0.08), 0 1px 3px rgba(0,0,0,0.06)`,...style}}>{children}</div>;}
+function SL({children,T}){return <div style={{fontSize:SP.fontLabel,fontWeight:SP.weightBold,color:T.textSecondary,letterSpacing:"0.1em",textTransform:"uppercase",marginTop:24,marginBottom:8,paddingLeft:4}}>{children}</div>;}
+function Btn({onClick,children,variant="accent",size="md",full,T,disabled,style}){
+const v={accent:{bg:T.accentBg,color:T.accentText,shadow:`0 4px 14px rgba(249,115,22,0.35)`},positive:{bg:T.positiveBg,color:T.positiveText,shadow:`0 4px 14px rgba(22,163,74,0.3)`},negative:{bg:T.negativeBg,color:T.negativeText,shadow:`0 4px 14px rgba(220,38,38,0.3)`},notice:{bg:T.noticeBg,color:T.noticeText,shadow:`0 4px 14px rgba(147,51,234,0.3)`},secondary:{bg:"transparent",color:T.textPrimary,shadow:"none",border:`2px solid ${T.borderMid}`},quiet:{bg:T.subtleBg,color:T.textSecondary,shadow:"none"}}[variant]||{bg:T.accentBg,color:T.accentText,shadow:`0 4px 14px rgba(249,115,22,0.35)`};
+return <button onClick={onClick} disabled={disabled} style={{background:v.bg,color:v.color,border:v.border||"none",borderRadius:SP.radiusPill,padding:size==="sm"?"7px 16px":"12px 24px",fontSize:size==="sm"?SP.fontSm:SP.fontMd,fontWeight:SP.weightBold,height:size==="sm"?"34px":SP.touchH,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.5:1,width:full?"100%":"auto",lineHeight:1,boxShadow:disabled?"none":v.shadow,transition:"transform 0.1s, box-shadow 0.1s",...style}}>{children}</button>;
 }
 function Tag({children,T,color}){
-const c={positive:{bg:"rgba(38,158,120,0.15)",c:T.positiveBg},negative:{bg:"rgba(215,55,63,0.15)",c:T.negativeBg},notice:{bg:"rgba(203,111,16,0.15)",c:T.noticeBg},info:{bg:"rgba(38,128,235,0.15)",c:T.accentBg},accent:{bg:T.selectedBg,c:T.accentBg}}[color]||{bg:T.tagBg,c:T.tagText};
-return <span style={{display:"inline-flex",alignItems:"center",padding:"3px 10px",borderRadius:SP.radiusPill,fontSize:"12px",fontWeight:SP.weightMed,background:c.bg,color:c.c,border:`1px solid ${c.c}22`}}>{children}</span>;
+const c={positive:{bg:"rgba(22,163,74,0.12)",c:"#16A34A"},negative:{bg:"rgba(220,38,38,0.12)",c:"#DC2626"},notice:{bg:"rgba(147,51,234,0.12)",c:"#9333EA"},info:{bg:"rgba(249,115,22,0.12)",c:T.accentBg},accent:{bg:T.selectedBg,c:T.accentBg}}[color]||{bg:T.tagBg,c:T.tagText};
+return <span style={{display:"inline-flex",alignItems:"center",padding:"4px 12px",borderRadius:SP.radiusPill,fontSize:"12px",fontWeight:SP.weightBold,background:c.bg,color:c.c}}>{children}</span>;
 }
 function StatCard({label,value,sub,color,T}){
-const ac={blue:T.accentBg,green:T.positiveBg,amber:T.noticeBg,red:T.negativeBg,purple:"#9b59b6",gray:T.textSecondary}[color]||T.accentBg;
-return <div style={{background:T.bgLayer2,borderRadius:SP.radiusMd,padding:"14px",border:`1px solid ${T.borderLight}`}}><div style={{fontSize:SP.fontLabel,color:ac,fontWeight:SP.weightBold,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</div><div style={{fontSize:SP.fontXl,fontWeight:SP.weightBold,color:T.textPrimary,lineHeight:1.1}}>{value}</div>{sub&&<div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:4}}>{sub}</div>}</div>;
+const ac={blue:T.accentBg,green:"#16A34A",amber:"#F59E0B",red:"#DC2626",purple:"#9333EA",gray:T.textSecondary}[color]||T.accentBg;
+const bg={blue:"rgba(249,115,22,0.08)",green:"rgba(22,163,74,0.08)",amber:"rgba(245,158,11,0.08)",red:"rgba(220,38,38,0.08)",purple:"rgba(147,51,234,0.08)",gray:T.subtleBg}[color]||T.subtleBg;
+return <div style={{background:T.bgLayer1,borderRadius:SP.radiusLg,padding:"16px",boxShadow:`0 2px 12px rgba(249,115,22,0.08)`}}><div style={{width:36,height:36,borderRadius:SP.radiusMd,background:bg,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:10}}><div style={{width:10,height:10,borderRadius:"50%",background:ac}}/></div><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</div><div style={{fontSize:SP.fontXl,fontWeight:SP.weightBold,color:T.textPrimary,lineHeight:1.1}}>{value}</div>{sub&&<div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:4}}>{sub}</div>}</div>;
 }
 function Inp({value,onChange,placeholder,type="text",step,style,T}){
-return <input value={value} onChange={onChange} type={type} step={step} placeholder={placeholder} style={{background:T.inputBg,border:`1px solid ${T.inputBorder}`,borderRadius:SP.radiusMd,padding:"10px 12px",fontSize:SP.fontMd,color:T.textPrimary,width:"100%",boxSizing:"border-box",height:SP.touchH,outline:"none",...style}}/>;
+return <input value={value} onChange={onChange} type={type} step={step} placeholder={placeholder} style={{background:T.inputBg,border:`2px solid ${T.inputBorder}`,borderRadius:SP.radiusMd,padding:"11px 14px",fontSize:SP.fontMd,color:T.textPrimary,width:"100%",boxSizing:"border-box",height:SP.touchH,outline:"none",transition:"border-color 0.2s",...style}}/>;
 }
 function Segmented({options,value,onChange,T}){
-return <div style={{display:"flex",background:T.bgLayer2,borderRadius:SP.radiusPill,padding:"3px",gap:"2px",border:`1px solid ${T.borderLight}`}}>{options.map(({id,label})=><button key={id} onClick={()=>onChange(id)} style={{flex:1,padding:"7px 12px",borderRadius:SP.radiusPill,border:"none",cursor:"pointer",background:value===id?T.accentBg:"transparent",color:value===id?T.accentText:T.textSecondary,fontSize:SP.fontSm,fontWeight:SP.weightBold}}>{label}</button>)}</div>;
+return <div style={{display:"flex",background:T.bgLayer2,borderRadius:SP.radiusPill,padding:"4px",gap:"3px"}}>{options.map(({id,label})=><button key={id} onClick={()=>onChange(id)} style={{flex:1,padding:"8px 12px",borderRadius:SP.radiusPill,border:"none",cursor:"pointer",background:value===id?T.accentBg:"transparent",color:value===id?T.accentText:T.textSecondary,fontSize:SP.fontSm,fontWeight:SP.weightBold,boxShadow:value===id?`0 2px 8px rgba(249,115,22,0.3)`:"none",transition:"all 0.2s"}}>{label}</button>)}</div>;
 }
 function Chip({label,selected,onClick,T,color}){
-const ac={negative:T.negativeBg,positive:T.positiveBg,notice:T.noticeBg}[color]||T.accentBg;
-return <button onClick={onClick} style={{padding:"7px 14px",borderRadius:SP.radiusPill,cursor:"pointer",fontSize:SP.fontSm,fontWeight:selected?SP.weightBold:SP.weightReg,background:selected?`${ac}22`:T.subtleBg,color:selected?ac:T.textSecondary,border:selected?`1.5px solid ${ac}`:`1px solid ${T.borderLight}`}}>{selected?"✓ ":""}{label}</button>;
+const ac={negative:"#DC2626",positive:"#16A34A",notice:"#9333EA"}[color]||T.accentBg;
+return <button onClick={onClick} style={{padding:"8px 16px",borderRadius:SP.radiusPill,cursor:"pointer",fontSize:SP.fontSm,fontWeight:selected?SP.weightBold:SP.weightReg,background:selected?`${ac}18`:T.subtleBg,color:selected?ac:T.textSecondary,border:selected?`2px solid ${ac}`:`2px solid transparent`,transition:"all 0.15s"}}>{selected?"✓ ":""}{label}</button>;
 }
 
 // ── Google Sheets ─────────────────────────────────────────────
@@ -203,14 +197,14 @@ const completeOnboarding=({babyName,dob})=>{setState(s=>({...s,babyName:babyName
 if(!onboarded)return <Onboarding onComplete={completeOnboarding} T={T}/>;
 
 return(
-<div className="app-wrap" style={{fontFamily:"-apple-system,system-ui,sans-serif",maxWidth:520,margin:"0 auto",paddingBottom:90,background:T.bgBase,minHeight:"100vh",color:T.textPrimary}}>
+<div className="app-wrap" style={{fontFamily:"-apple-system,system-ui,'Segoe UI',sans-serif",maxWidth:520,margin:"0 auto",paddingBottom:90,background:T.bgBase,minHeight:"100vh",color:T.textPrimary}}>
 {/* #8 Tap header to go home */}
-<header onClick={()=>setTab("dashboard")} style={{background:T.statusBar,borderBottom:`1px solid ${T.borderLight}`,padding:"14px 18px 12px",position:"sticky",top:0,zIndex:10,cursor:"pointer"}}>
-<div style={{display:"flex",alignItems:"center",gap:8}}>
-<img src="./coin.png" alt="DearPenny" style={{width:32,height:32,borderRadius:"50%",objectFit:"cover"}}/>
-<div style={{flex:1}}><div style={{fontWeight:SP.weightBold,fontSize:SP.fontLg,color:T.textPrimary}}>DearPenny</div><div style={{fontSize:"11px",color:T.textSecondary}}>{state.babyFullName||state.babyName}</div></div>
-<button onClick={e=>{e.stopPropagation();setTab("settings");}} style={{background:tab==="settings"?`${T.accentBg}22`:T.subtleBg,border:`1px solid ${tab==="settings"?T.accentBg:T.borderLight}`,borderRadius:SP.radiusPill,padding:"7px 12px",fontSize:SP.fontSm,cursor:"pointer",color:tab==="settings"?T.accentBg:T.textSecondary,fontWeight:SP.weightBold,height:"36px"}}>⚙</button>
-<button onClick={e=>{e.stopPropagation();setEditMode(v=>!v);}} style={{background:editMode?`${T.accentBg}22`:T.subtleBg,border:`1px solid ${editMode?T.accentBg:T.borderLight}`,borderRadius:SP.radiusPill,padding:"7px 12px",fontSize:SP.fontSm,cursor:"pointer",color:editMode?T.accentBg:T.textSecondary,fontWeight:SP.weightBold,height:"36px"}}>{editMode?"✓":"✏"}</button>
+<header onClick={()=>setTab("dashboard")} style={{background:T.statusBar,borderBottom:`1px solid ${T.borderLight}`,padding:"14px 18px 12px",position:"sticky",top:0,zIndex:10,cursor:"pointer",backdropFilter:"blur(10px)"}}>
+<div style={{display:"flex",alignItems:"center",gap:10}}>
+<img src="./coin.png" alt="DearPenny" style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",boxShadow:"0 2px 8px rgba(249,115,22,0.3)"}}/>
+<div style={{flex:1}}><div style={{fontWeight:SP.weightBold,fontSize:SP.fontLg,color:T.textPrimary}}>DearPenny 🍊</div><div style={{fontSize:"11px",color:T.textSecondary}}>{state.babyFullName||state.babyName}</div></div>
+<button onClick={e=>{e.stopPropagation();setTab("settings");}} style={{background:tab==="settings"?T.accentBg:T.subtleBg,border:"none",borderRadius:SP.radiusPill,padding:"7px 14px",fontSize:SP.fontSm,cursor:"pointer",color:tab==="settings"?T.accentText:T.textSecondary,fontWeight:SP.weightBold,height:"36px",boxShadow:tab==="settings"?`0 2px 8px rgba(249,115,22,0.3)`:"none"}}>⚙</button>
+<button onClick={e=>{e.stopPropagation();setEditMode(v=>!v);}} style={{background:editMode?T.accentBg:T.subtleBg,border:"none",borderRadius:SP.radiusPill,padding:"7px 14px",fontSize:SP.fontSm,cursor:"pointer",color:editMode?T.accentText:T.textSecondary,fontWeight:SP.weightBold,height:"36px",boxShadow:editMode?`0 2px 8px rgba(249,115,22,0.3)`:"none"}}>{editMode?"✓":"✏"}</button>
 </div>
 </header>
 <div className="app-scroll" style={{padding:"0 16px"}}>
@@ -227,14 +221,14 @@ return(
 {tab==="settings"&&<SettingsTab state={state} update={update} T={T}/>}
 </div>
 {/* #9 Fixed nav icon sizes via className */}
-<nav style={{position:"fixed",bottom:0,left:0,right:0,background:T.statusBar,borderTop:`1px solid ${T.borderLight}`}}>
+<nav style={{position:"fixed",bottom:0,left:0,right:0,background:T.statusBar,borderTop:`1px solid ${T.borderLight}`,backdropFilter:"blur(10px)"}}>
 <div style={{display:"flex",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",padding:"6px 0 env(safe-area-inset-bottom,8px)"}}>
 {NAV.map(n=>(
 <button key={n.id} onClick={()=>{setTab(n.id);if(n.id!=="dashboard")setEditMode(false);}}
-style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"2px",padding:"4px 0",color:tab===n.id?T.accentBg:T.textSecondary,minWidth:"18.18%",flexShrink:0,position:"relative"}}>
-{tab===n.id&&<div style={{position:"absolute",top:0,left:"25%",right:"25%",height:"2px",background:T.accentBg,borderRadius:"0 0 2px 2px"}}/>}
+style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"2px",padding:"4px 0",color:tab===n.id?T.accentBg:T.textSecondary,minWidth:"18.18%",flexShrink:0,position:"relative",transition:"color 0.2s"}}>
+{tab===n.id&&<div style={{position:"absolute",top:0,left:"20%",right:"20%",height:"3px",background:T.accentBg,borderRadius:"0 0 4px 4px",boxShadow:`0 2px 6px rgba(249,115,22,0.4)`}}/>}
 <span className="nav-icon">{n.icon}</span>
-<span className="nav-label">{n.label}</span>
+<span className="nav-label" style={{fontWeight:tab===n.id?SP.weightBold:SP.weightReg}}>{n.label}</span>
 </button>
 ))}
 </div>
@@ -368,13 +362,13 @@ return(<div>
 <SL T={T}>Feeding reminder</SL>
 <Card T={T}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:notifStatus==="granted"?12:0}}>
-<div><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>Remind me to feed</div><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:2}}>Every {state.reminderInterval} min ({(state.reminderInterval/60).toFixed(1)}h)</div></div>
+<div><div style={{fontSize:SP.fontMd,fontWeight:SP.weightBold,color:T.textPrimary}}>Remind me to feed</div><div style={{fontSize:SP.fontSm,color:T.textSecondary,marginTop:2}}>Every {state.reminderInterval>=60?`${Math.floor(state.reminderInterval/60)}h${state.reminderInterval%60>0?` ${state.reminderInterval%60}m`:""}` :`${state.reminderInterval}m`}</div></div>
 {notifStatus==="unsupported"&&<Tag T={T} color="notice">Not supported</Tag>}
 {notifStatus==="default"&&<Btn T={T} onClick={reqNotif} variant="accent" size="sm">Enable</Btn>}
 {notifStatus==="denied"&&<Tag T={T} color="negative">Blocked</Tag>}
 {notifStatus==="granted"&&<button onClick={()=>update("reminderEnabled",!state.reminderEnabled)} style={{padding:"8px 18px",borderRadius:SP.radiusPill,border:`1.5px solid ${state.reminderEnabled?T.positiveBg:T.borderMid}`,cursor:"pointer",fontSize:SP.fontSm,background:state.reminderEnabled?`${T.positiveBg}22`:"transparent",color:state.reminderEnabled?T.positiveBg:T.textSecondary,fontWeight:SP.weightBold}}>{state.reminderEnabled?"● On":"○ Off"}</button>}
 </div>
-{notifStatus==="granted"&&<div><input type="range" min="30" max="360" step="15" value={state.reminderInterval} onChange={e=>update("reminderInterval",Number(e.target.value))} style={{width:"100%",accentColor:T.accentBg,marginBottom:4}}/><div style={{display:"flex",justifyContent:"space-between",fontSize:"11px",color:T.textSecondary}}><span>30m</span><span>1h</span><span>2h</span><span>3h</span><span>4h</span><span>6h</span></div></div>}
+{notifStatus==="granted"&&<div><input type="range" min="30" max="360" step="30" value={state.reminderInterval} onChange={e=>update("reminderInterval",Number(e.target.value))} style={{width:"100%",accentColor:T.accentBg,marginBottom:4}}/><div style={{display:"flex",justifyContent:"space-between",fontSize:"11px",color:T.textSecondary}}><span>30m</span><span>1h</span><span>1.5h</span><span>2h</span><span>2.5h</span><span>3h</span><span>4h</span><span>5h</span><span>6h</span></div></div>}
 </Card>
 
 {/* #5 Shared Sync moved fully into Settings */}
