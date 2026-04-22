@@ -95,7 +95,7 @@ const VAX_SCHEDULE=[
 
 function getBabyAgeWeeks(dob){if(!dob)return null;const d=new Date(dob);if(isNaN(d))return null;return Math.floor((Date.now()-d.getTime())/(7*24*3600*1000));}
 
-const defaultState={babyName:"Baby Girl",babyFullName:"",babyDOB:"",babyBirthWeight:"",feeding:[],diapers:[],symptoms:[],growth:[],milestones:[],sleep:[],reminderInterval:180,reminderEnabled:false,theme:"dark",sharedRoomId:null,lastSyncTs:null,contractions:[],cameraConfig:{},motionConfig:{sensitivity:40,autoEndSleep:true,notifyBoth:true,stirringAlert:false,awakeAlert:true,enabled:false},widgetOrder:[...DEFAULT_WIDGET_ORDER],hiddenWidgets:[],doses:[],vaccDone:{},vaccSkipped:{},vaccDelayed:{},gClientId:"",gAccessToken:"",gSheetId:"",doctorVisits:[]};
+const defaultState={babyName:"Baby Girl",babyFullName:"",babyDOB:"",babyBirthWeight:"",feeding:[],diapers:[],symptoms:[],growth:[],milestones:[],sleep:[],reminderInterval:180,reminderEnabled:false,theme:"light",sharedRoomId:null,lastSyncTs:null,contractions:[],cameraConfig:{},motionConfig:{sensitivity:40,autoEndSleep:true,notifyBoth:true,stirringAlert:false,awakeAlert:true,enabled:false},widgetOrder:[...DEFAULT_WIDGET_ORDER],hiddenWidgets:[],doses:[],vaccDone:{},vaccSkipped:{},vaccDelayed:{},gClientId:"",gAccessToken:"",gSheetId:"",doctorVisits:[]};
 
 function loadState(){try{const s=localStorage.getItem("dear_penny_v1");const d=s?{...defaultState,...JSON.parse(s)}:{...defaultState};if(!d.widgetOrder||!d.widgetOrder.length)d.widgetOrder=[...DEFAULT_WIDGET_ORDER];if(!d.hiddenWidgets)d.hiddenWidgets=[];if(!d.doctorVisits)d.doctorVisits=[];return d;}catch{return{...defaultState};}}
 function saveState(s){try{localStorage.setItem("dear_penny_v1",JSON.stringify(s));}catch{}}
@@ -178,7 +178,7 @@ const [tab,setTab]=useState("dashboard");
 const [editMode,setEditMode]=useState(false);
 const [onboarded,setOnboarded]=useState(()=>{try{return !!JSON.parse(localStorage.getItem("dear_penny_v1"))?.onboarded;}catch{return false;}});
 const reminderRef=useRef(null);
-const T=S2[state.theme||"light"]||S2.light;
+const T=S2[state.theme]||S2.light;
 
 useEffect(()=>saveState(state),[state]);
 
