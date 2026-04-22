@@ -370,18 +370,19 @@ return(<div>
 {id:"midnight",name:"🌙 Midnight",desc:"Deep navy & indigo"},
 {id:"rose",name:"🌸 Rose",desc:"Blush pink & red"},
 ].map(th=>{
-const themeColors=S2[th.id];
-const isSelected=state.theme===th.id;
+const tc=S2[th.id]||S2.light;
+const isSel=state.theme===th.id;
 return(
-<button key={th.id} onClick={()=>update("theme",th.id)} style={{background:themeColors.bgLayer2,borderRadius:SP.radiusLg,padding:"12px 14px",border:`3px solid ${isSelected?themeColors.accentBg:"transparent"}`,cursor:"pointer",textAlign:"left",boxShadow:isSelected?`0 4px 14px ${themeColors.accentBg}44`:"0 2px 8px rgba(0,0,0,0.06)",transition:"all 0.2s"}}>
+<button key={th.id} onClick={()=>update("theme",th.id)}
+style={{background:tc.bgLayer2,borderRadius:SP.radiusLg,padding:"12px 14px",border:`3px solid ${isSel?tc.accentBg:"transparent"}`,cursor:"pointer",textAlign:"left",boxShadow:isSel?`0 4px 14px ${tc.accentBg}44`:"0 2px 8px rgba(0,0,0,0.06)",transition:"all 0.2s"}}>
 <div style={{display:"flex",gap:6,marginBottom:8}}>
-{[themeColors.accentBg,themeColors.positiveBg,themeColors.noticeBg].map((c,i)=>(
-<div key={i} style={{width:16,height:16,borderRadius:"50%",background:c}}/>
-))}
+<div style={{width:16,height:16,borderRadius:"50%",background:tc.accentBg}}/>
+<div style={{width:16,height:16,borderRadius:"50%",background:tc.positiveBg}}/>
+<div style={{width:16,height:16,borderRadius:"50%",background:tc.noticeBg}}/>
 </div>
-<div style={{fontSize:SP.fontSm,fontWeight:SP.weightBold,color:themeColors.textPrimary,marginBottom:2}}>{th.name}</div>
-<div style={{fontSize:"11px",color:themeColors.textSecondary}}>{th.desc}</div>
-{isSelected&&<div style={{marginTop:6,fontSize:"10px",color:themeColors.accentBg,fontWeight:SP.weightBold}}>✓ Active</div>}
+<div style={{fontSize:SP.fontSm,fontWeight:SP.weightBold,color:tc.textPrimary,marginBottom:2}}>{th.name}</div>
+<div style={{fontSize:"11px",color:tc.textSecondary}}>{th.desc}</div>
+{isSel&&<div style={{marginTop:6,fontSize:"10px",color:tc.accentBg,fontWeight:SP.weightBold}}>✓ Active</div>}
 </button>
 );
 })}
