@@ -12,8 +12,9 @@
   </style>
 </head>
 <body>
-  <div class="spinner"></div>
+  <div class="spinner" id="spinner"></div>
   <p id="msg">Completing sign-in…</p>
+  <a id="backbtn" href="https://greenhousehold.github.io/dearpenny/" style="display:none;margin-top:20px;padding:14px 28px;background:#F97316;color:#fff;border-radius:999px;font-weight:bold;font-size:16px;text-decoration:none;font-family:sans-serif;">← Back to DearPenny</a>
 
 <script>
   (function(){
@@ -44,16 +45,15 @@
       } catch(e) {}
     }
 
-    // Mobile flow — store token and redirect back to app
+    // Store token in localStorage — main app polls for it
     try {
       localStorage.setItem('dearpenny_oauth_token', JSON.stringify({
         token: token,
         ts: Date.now()
       }));
-      document.getElementById('msg').textContent = 'Signed in! Returning to app…';
-      setTimeout(() => {
-        window.location.href = 'https://greenhousehold.github.io/dearpenny/';
-      }, 600);
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('msg').textContent = '✓ Signed in! Please go back to DearPenny.';
+      document.getElementById('backbtn').style.display = 'block';
     } catch(e) {
       document.getElementById('msg').textContent = 'Signed in! Please return to the app manually.';
     }
