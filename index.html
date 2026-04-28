@@ -106,8 +106,6 @@ function sendNotification(title,body){
   if("Notification"in window&&Notification.permission==="granted"){new Notification(title,{body});}
 }
 
-const getBabyAgeWeeks=dob=>{if(!dob)return null;const d=new Date(dob);if(isNaN(d))return null;return Math.floor((Date.now()-d.getTime())/(7*24*3600*1000));};
-
 const fmtTime=iso=>new Date(iso).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 const fmtDate=iso=>new Date(iso).toLocaleDateString([],{month:"short",day:"numeric"});
 const fmtDateFull=iso=>new Date(iso).toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"});
