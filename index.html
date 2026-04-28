@@ -93,7 +93,7 @@ const VAX_SCHEDULE=[
 {id:"ipv_4",name:"Polio (IPV)",dose:"4th",ageLabel:"4–6 years",ageWeeks:208},
 ];
 
-function getBabyAgeWeeks(dob){if(!dob)return null;const d=new Date(dob);if(isNaN(d))return null;return Math.floor((Date.now()-d.getTime())/(7*24*3600*1000));}
+const getBabyAgeWeeks=(dob)=>{if(!dob)return null;const d=new Date(dob);if(isNaN(d))return null;return Math.floor((Date.now()-d.getTime())/(7*24*3600*1000));};
 
 const defaultState={babyName:"Baby Girl",babyFullName:"",babyDOB:"",babyBirthWeight:"",feeding:[],diapers:[],symptoms:[],growth:[],milestones:[],sleep:[],reminderInterval:180,reminderEnabled:false,theme:"light",sharedRoomId:null,lastSyncTs:null,contractions:[],cameraConfig:{},motionConfig:{sensitivity:40,autoEndSleep:true,notifyBoth:true,stirringAlert:false,awakeAlert:true,enabled:false},widgetOrder:[...DEFAULT_WIDGET_ORDER],hiddenWidgets:[],doses:[],vaccDone:{},vaccSkipped:{},vaccDelayed:{},gClientId:"",gAccessToken:"",gSheetId:"",doctorVisits:[]};
 
@@ -528,7 +528,7 @@ return(<div><SL T={T}>Sleep tracker</SL><div style={{display:"grid",gridTemplate
 function BabyMonitorWidget({state,T}){
 const cfg=state.cameraConfig||{};
 const hasConfig=cfg.mjpegUrl||( cfg.ip&&cfg.port);
-const mjpegUrl=cfg.mjpegUrl||(cfg.ip?`http://${cfg.user||"admin"}:${cfg.pass||""}@${cfg.ip}/cgi-bin/api.cgi?cmd=Snap&channel=${cfg.channel||0}&user=${cfg.user||"admin"}&password=${cfg.pass||""}`:"");
+const mjpegUrl=proxyCamUrl(cfg.mjpegUrl||(cfg.ip?`http://${cfg.user||"admin"}:${cfg.pass||""}@${cfg.ip}/cgi-bin/api.cgi?cmd=Snap&channel=${cfg.channel||0}&user=${cfg.user||"admin"}&password=${cfg.pass||""}`:""));
 const motionCfg=state.motionConfig||{enabled:false};
 const activeSleep=state.sleep.find(s=>!s.end);
 const [time,setTime]=useState(new Date());
