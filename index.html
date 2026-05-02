@@ -328,6 +328,7 @@ function SettingsTab({state,update,T}){
 const [notifStatus,setNotifStatus]=useState("Notification" in window?Notification.permission:"unsupported");
 const [clientId,setClientId]=useState(state.gClientId||"");
 const [sheetStatus,setSheetStatus]=useState(state.gSheetId?"success":"idle");
+const [existingSheetId,setExistingSheetId]=useState("");
 const [sheetUrl,setSheetUrl]=useState(state.gSheetId?`https://docs.google.com/spreadsheets/d/${state.gSheetId}`:"");
 const [syncing,setSyncing]=useState(false);
 // #5 Shared sync state now lives in Settings
@@ -493,6 +494,14 @@ style={{background:tc.bgLayer2,borderRadius:SP.radiusLg,padding:"12px 14px",bord
 <div style={{marginBottom:10}}><div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>OAuth Client ID</div><Inp T={T} value={clientId} onChange={e=>setClientId(e.target.value)} placeholder="Paste your Google OAuth Client ID"/></div>
 <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}><Btn T={T} onClick={connectGoogle} variant="accent">Connect Google</Btn>{state.gAccessToken&&<Btn T={T} onClick={syncNow} variant="positive" disabled={syncing}>{syncing?"Syncing…":"Sync now"}</Btn>}</div>
 {sheetStatus==="waiting"&&<div style={{fontSize:SP.fontSm,color:T.noticeBg}}>Sign-in window opened…</div>}
+<div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${T.borderLight}`}}>
+<div style={{fontSize:SP.fontLabel,color:T.textSecondary,fontWeight:SP.weightBold,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.06em"}}>Join existing sheet</div>
+<div style={{fontSize:SP.fontSm,color:T.textSecondary,marginBottom:8}}>Already have a sheet? Paste the ID to connect to it.</div>
+<div style={{display:"flex",gap:8}}>
+<Inp T={T} value={existingSheetId} onChange={e=>setExistingSheetId(e.target.value)} placeholder="1-7xLmdLLWVlubq..."/>
+<Btn T={T} onClick={()=>{if(existingSheetId.trim()){update("gSheetId",existingSheetId.trim());setSheetUrl(`https://docs.google.com/spreadsheets/d/${existingSheetId.trim()}`);setSheetStatus("success");}}} variant="positive" size="sm">Join</Btn>
+</div>
+</div>
 {sheetStatus==="syncing"&&<div style={{fontSize:SP.fontSm,color:T.accentBg}}>Syncing…</div>}
 {sheetStatus==="noclientid"&&<div style={{fontSize:SP.fontSm,color:T.negativeBg}}>Please paste your Client ID first.</div>}
 {sheetStatus==="error"&&<div style={{fontSize:SP.fontSm,color:T.negativeBg}}>Sync failed — try reconnecting.</div>}
