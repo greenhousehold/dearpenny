@@ -188,6 +188,29 @@ doses:parse(data.valueRanges[5]?.values,r=>({id:Date.now(),ts:toISO(r[0]+" "+r[1
 doctorVisits:parse(data.valueRanges[6]?.values,r=>({id:Date.now(),ts:toISO(r[0]),doctor:r[1]||"",reason:r[2]||"",notes:r[3]||"",nextAppt:r[4]||""})),
 };
 }
+async function deleteSheetRow(sheetId,token,tabName,entryId){
+  const h={"Authorization":`Bearer ${token}`};
+  // Get the spreadsheet metadata to find the sheet's gridId
+  const metaRes=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}`,{headers:h});
+  const meta=await metaRes.json();
+  const sheet=meta.sheets?.find(s=>s.properties.title===tabName);
+  if(!sheet)return;
+  const gridId=sheet.properties.sheetId;
+  // Read all rows in that tab to find the row index with matching ID
+  const dataRes=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tabName+"!A:D")}`,{headers:h});
+  const data=await dataRes.json();
+  const rows=data.values||[];
+  // Find row index (0-based, row 0 is header)
+  const rowIdx=rows.findIndex((r,i)=>i>0&&r[3]===String(entryId));
+  if(rowIdx<1)return; // not found
+  // Delete that row
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,{
+    method:"POST",headers:{...h,"Content-Type":"application/json"},
+    body:JSON.stringify({requests:[{deleteDimension:{range:{sheetId:gridId,dimension:"ROWS",startIndex:rowIdx,endIndex:rowIdx+1}}}]})
+  });
+  console.log(`✓ Deleted row ${rowIdx} from ${tabName}`);
+}
+
 function mergeEntries(local,remote){
 if(!remote||!remote.length)return local;
 const seen=new Set(local.map(e=>e.id||e.ts));
