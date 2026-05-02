@@ -249,7 +249,15 @@ pull(); // Pull immediately on connect
 const t=setInterval(pull,5*60*1000);
 return()=>clearInterval(t);
 },[state.gAccessToken,state.gSheetId]);
-const removeEntry=useCallback((k,id)=>setState(s=>({...s,[k]:s[k].filter(e=>e.id!==id)})),[]);
+const removeEntry=useCallback((k,id)=>{
+  setState(s=>{
+    const next={...s,[k]:s[k].filter(e=>e.id!==id)};
+    if(syncRef.current.token&&syncRef.current.sheetId){
+      setTimeout(()=>gSheetsSync(next,syncRef.current.token).catch(()=>{}),500);
+    }
+    return next;
+  });
+},[]);
 const completeOnboarding=({babyName,dob})=>{setState(s=>({...s,babyName:babyName||"Baby Girl",babyDOB:dob||"",onboarded:true}));setOnboarded(true);};
 
 if(!onboarded)return <Onboarding onComplete={completeOnboarding} T={T}/>;
