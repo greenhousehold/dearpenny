@@ -168,6 +168,34 @@ await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values:batchUpd
 return{sheetId:id,url:`https://docs.google.com/spreadsheets/d/${id}`};
 }
 
+async function gSheetsRead(state,token){
+const h={"Authorization":`Bearer ${token}`};
+if(!state.gSheetId)return null;
+const ranges=["Feeding!A2:G","Sleep!A2:F","Diapers!A2:C","Symptoms!A2:G","Growth!A2:F","Doses!A2:H","DoctorVisits!A2:F"];
+const params=ranges.map(r=>`ranges=${encodeURIComponent(r)}`).join("&");
+const res=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${state.gSheetId}/values:batchGet?${params}`,{headers:h});
+const data=await res.json();
+if(!data.valueRanges)return null;
+const parse=(rows,fn)=>(rows||[]).filter(r=>r&&r[0]).map(fn);
+const toISO=s=>{try{return new Date(s).toISOString();}catch{return new Date().toISOString();}};
+return{
+feeding:parse(data.valueRanges[0]?.values,r=>({id:r[6]||Date.now(),ts:toISO(r[0]+" "+r[1]),type:r[2]||"breast",side:r[3]||"",amount:r[4]||"",duration:r[5]||"",note:r[6]||""})),
+sleep:parse(data.valueRanges[1]?.values,r=>({id:r[5]||Date.now(),ts:toISO(r[0]+" "+r[1]),end:r[2]?toISO(r[0]+" "+r[2]):null,note:r[4]||""})),
+diapers:parse(data.valueRanges[2]?.values,r=>({id:Date.now(),ts:toISO(r[0]+" "+r[1]),type:r[2]||"wet"})),
+symptoms:parse(data.valueRanges[3]?.values,r=>({id:Date.now(),ts:toISO(r[0]),type:r[1]||"",severity:r[2]||"mild",temp:r[3]||"",note:r[4]||""})),
+growth:parse(data.valueRanges[4]?.values,r=>({id:Date.now(),ts:toISO(r[0]),weight:r[1]||"",height:r[2]||"",head:r[3]||"",note:r[4]||""})),
+doses:parse(data.valueRanges[5]?.values,r=>({id:Date.now(),ts:toISO(r[0]+" "+r[1]),name:r[2]||"",amount:r[3]||"",unit:r[4]||"",reason:r[5]||"",givenBy:r[6]||""})),
+doctorVisits:parse(data.valueRanges[6]?.values,r=>({id:Date.now(),ts:toISO(r[0]),doctor:r[1]||"",reason:r[2]||"",notes:r[3]||"",nextAppt:r[4]||""})),
+};
+}
+function mergeEntries(local,remote){
+if(!remote||!remote.length)return local;
+const seen=new Set(local.map(e=>e.ts));
+const newEntries=remote.filter(e=>!seen.has(e.ts));
+return[...local,...newEntries].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+}
+
+
 // ── App ───────────────────────────────────────────────────────
 function App(){
 const [state,setState]=useState(loadState);
@@ -187,7 +215,40 @@ return()=>clearInterval(reminderRef.current);
 },[state.reminderEnabled,state.reminderInterval,state.feeding,state.babyName]);
 
 const update=useCallback((k,v)=>setState(s=>({...s,[k]:v})),[]);
-const addEntry=useCallback((k,e)=>setState(s=>({...s,[k]:[{id:Date.now(),ts:nowISO(),...e},...s[k]]})),[]);
+const syncRef=useRef({token:null,sheetId:null});
+useEffect(()=>{syncRef.current={token:state.gAccessToken,sheetId:state.gSheetId};},[state.gAccessToken,state.gSheetId]);
+const addEntry=useCallback((k,e)=>{
+setState(s=>{
+const next={...s,[k]:[{id:Date.now(),ts:nowISO(),...e},...s[k]]};
+// Push to sheet immediately if connected
+if(syncRef.current.token&&syncRef.current.sheetId){
+setTimeout(()=>gSheetsSync(next,syncRef.current.token).catch(()=>{}),500);
+}
+return next;
+});
+},[]);
+// Auto-pull every 5 minutes
+useEffect(()=>{
+if(!state.gAccessToken||!state.gSheetId)return;
+const pull=async()=>{
+try{
+const remote=await gSheetsRead(state,state.gAccessToken);
+if(!remote)return;
+setState(s=>({...s,
+feeding:mergeEntries(s.feeding,remote.feeding),
+sleep:mergeEntries(s.sleep,remote.sleep),
+diapers:mergeEntries(s.diapers,remote.diapers),
+symptoms:mergeEntries(s.symptoms,remote.symptoms),
+growth:mergeEntries(s.growth,remote.growth),
+doses:mergeEntries(s.doses,remote.doses),
+doctorVisits:mergeEntries(s.doctorVisits,remote.doctorVisits),
+}));
+}catch(e){}
+};
+pull(); // Pull immediately on connect
+const t=setInterval(pull,5*60*1000);
+return()=>clearInterval(t);
+},[state.gAccessToken,state.gSheetId]);
 const removeEntry=useCallback((k,id)=>setState(s=>({...s,[k]:s[k].filter(e=>e.id!==id)})),[]);
 const completeOnboarding=({babyName,dob})=>{setState(s=>({...s,babyName:babyName||"Baby Girl",babyDOB:dob||"",onboarded:true}));setOnboarded(true);};
 
