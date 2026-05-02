@@ -350,6 +350,24 @@ document.head.appendChild(s);
 setSheetStatus("waiting");
 }
 };
+
+useEffect(()=>{
+const handleNative=(e)=>{
+if(e.detail?.accessToken){
+const token=e.detail.accessToken;
+update("gAccessToken",token);
+setSheetStatus("syncing");setSyncing(true);
+gSheetsSync(state,token)
+.then(({sheetId,url})=>{update("gSheetId",sheetId);setSheetUrl(url);setSheetStatus("success");})
+.catch(()=>setSheetStatus("error"))
+.finally(()=>setSyncing(false));
+}
+if(e.detail?.error)setSheetStatus("error");
+};
+window.addEventListener("dearpenny_oauth",handleNative);
+return()=>window.removeEventListener("dearpenny_oauth",handleNative);
+},[]);
+
 const syncNow=async()=>{
 if(!state.gAccessToken){setSheetStatus("notoken");return;}
 setSyncing(true);setSheetStatus("syncing");
