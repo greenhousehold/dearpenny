@@ -253,7 +253,9 @@ const removeEntry=useCallback((k,id)=>{
   setState(s=>{
     const next={...s,[k]:s[k].filter(e=>e.id!==id)};
     if(syncRef.current.token&&syncRef.current.sheetId){
-      setTimeout(()=>gSheetsSync(next,syncRef.current.token).catch(()=>{}),500);
+      setTimeout(()=>gSheetsSync({...next,gSheetId:syncRef.current.sheetId},syncRef.current.token)
+        .then(()=>console.log("Sheet synced after delete"))
+        .catch(e=>console.warn("Sheet sync failed after delete:",e)),500);
     }
     return next;
   });
