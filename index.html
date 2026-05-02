@@ -585,9 +585,11 @@ case "diaper":return(<div>
 ?<Btn T={T} onClick={()=>setShowDiaper(true)} variant="secondary">+ Log diaper change</Btn>
 :<div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{["wet","dirty","mixed","dry"].map(t=><Chip key={t} label={t} selected={dType===t} onClick={()=>setDType(t)} T={T}/>)}</div><div style={{display:"flex",gap:8}}><Btn T={T} onClick={()=>{addEntry("diapers",{type:dType});setShowDiaper(false);}} variant="positive">Save</Btn><Btn T={T} onClick={()=>setShowDiaper(false)} variant="quiet" size="sm">Cancel</Btn></div></div>}
 <div style={{marginTop:10}}>{state.diapers.slice(0,4).map(d=>(<div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${T.borderLight}`}}><div><div style={{display:"flex",gap:6,alignItems:"center"}}><Tag T={T} color="notice">{d.type}</Tag><span style={{fontSize:SP.fontSm,color:T.textSecondary}}>{timeAgo(d.ts)}</span></div></div><button onClick={()=>removeEntry("diapers",d.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDisabled,fontSize:20,padding:"0 0 0 8px"}}>×</button></div>))}{state.diapers.length===0&&<div style={{fontSize:SP.fontSm,color:T.textDisabled,marginTop:6}}>No diapers logged yet.</div>}{state.diapers.length>0&&<button onClick={()=>{if(window.confirm("Clear all "+state.diapers.length+" diaper entries?")){
+  const token=syncRef.current.token;
+  const sheetId=syncRef.current.sheetId;
   update("diapers",[]);
-  if(syncRef.current.token&&syncRef.current.sheetId){
-    setTimeout(()=>gSheetsSync({...state,diapers:[],gSheetId:syncRef.current.sheetId},syncRef.current.token)
+  if(token&&sheetId){
+    setTimeout(()=>gSheetsSync({...state,diapers:[],gSheetId:sheetId,gAccessToken:token},token)
       .then(()=>console.log("✓ Sheet cleared"))
       .catch(e=>{if(String(e).includes("401"))setTokenExpired(true);}),500);
   }
