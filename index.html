@@ -281,7 +281,16 @@ return(
 </div>
 </header>
 <div className="app-scroll" style={{padding:"0 16px"}}>
-{tokenExpired&&<div onClick={()=>setTab("settings")} style={{background:"#DC2626",color:"#fff",padding:"10px 16px",fontSize:"13px",fontWeight:700,textAlign:"center",cursor:"pointer",borderRadius:"0 0 12px 12px",marginBottom:8}}>⚠ Google session expired — tap to reconnect</div>}
+{tokenExpired&&<div onClick={()=>{
+  if(window.AndroidBridge&&typeof window.AndroidBridge.signInWithGoogle==="function"){
+    window.AndroidBridge.signInWithGoogle();
+  } else if(state.gClientId) {
+    const params=new URLSearchParams({client_id:state.gClientId,redirect_uri:"https://greenhousehold.github.io/dearpenny/oauth.html",response_type:"token",scope:"https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file",prompt:"select_account"});
+    window.open("https://accounts.google.com/o/oauth2/v2/auth?"+params,"GoogleOAuth","width=500,height=600");
+  } else {
+    setTab("settings");
+  }
+}} style={{background:"#DC2626",color:"#fff",padding:"10px 16px",fontSize:"13px",fontWeight:700,textAlign:"center",cursor:"pointer",borderRadius:"0 0 12px 12px",marginBottom:8}}>⚠ Google session expired — tap here to reconnect</div>}
 {tab==="dashboard"&&<Dashboard state={state} addEntry={addEntry} removeEntry={removeEntry} update={update} T={T} editMode={editMode}/>}
 {tab==="feeding"&&<Feeding state={state} addEntry={addEntry} removeEntry={removeEntry} T={T}/>}
 {tab==="sleep"&&<Sleep state={state} addEntry={addEntry} removeEntry={removeEntry} update={update} T={T}/>}
