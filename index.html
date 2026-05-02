@@ -201,6 +201,7 @@ function App(){
 const [state,setState]=useState(loadState);
 const [tab,setTab]=useState("dashboard");
 const [editMode,setEditMode]=useState(false);
+const [tokenExpired,setTokenExpired]=useState(false);
 const [onboarded,setOnboarded]=useState(()=>{try{return !!JSON.parse(localStorage.getItem("dear_penny_v1"))?.onboarded;}catch{return false;}});
 const reminderRef=useRef(null);
 const T=S2[state.theme]||S2.light;
@@ -217,12 +218,13 @@ return()=>clearInterval(reminderRef.current);
 const update=useCallback((k,v)=>setState(s=>({...s,[k]:v})),[]);
 const syncRef=useRef({token:null,sheetId:null});
 useEffect(()=>{syncRef.current={token:state.gAccessToken,sheetId:state.gSheetId};},[state.gAccessToken,state.gSheetId]);
+const uid=()=>Date.now()+"-"+Math.random().toString(36).slice(2,7);
 const addEntry=useCallback((k,e)=>{
 setState(s=>{
-const next={...s,[k]:[{id:Date.now(),ts:nowISO(),...e},...s[k]]};
+const next={...s,[k]:[{id:uid(),ts:nowISO(),...e},...s[k]]};
 // Push to sheet immediately if connected
 if(syncRef.current.token&&syncRef.current.sheetId){
-setTimeout(()=>gSheetsSync(next,syncRef.current.token).catch(()=>{}),500);
+setTimeout(()=>gSheetsSync(next,syncRef.current.token).then(()=>setTokenExpired(false)).catch(e=>{if(String(e).includes("401"))setTokenExpired(true);}),500);
 }
 return next;
 });
@@ -257,8 +259,8 @@ const removeEntry=useCallback((k,id)=>{
     if(token&&sheetId){
       const syncState={...next,gSheetId:sheetId,gAccessToken:token};
       setTimeout(()=>gSheetsSync(syncState,token)
-        .then(()=>console.log("✓ Sheet synced after delete"))
-        .catch(e=>console.warn("✗ Sheet sync failed:",e)),500);
+        .then(()=>{console.log("✓ Sheet synced after delete");setTokenExpired(false);})
+        .catch(e=>{console.warn("✗ Sheet sync failed:",e);if(e?.status===401||String(e).includes("401"))setTokenExpired(true);}),500);
     }
     return next;
   });
@@ -279,6 +281,7 @@ return(
 </div>
 </header>
 <div className="app-scroll" style={{padding:"0 16px"}}>
+{tokenExpired&&<div onClick={()=>setTab("settings")} style={{background:"#DC2626",color:"#fff",padding:"10px 16px",fontSize:"13px",fontWeight:700,textAlign:"center",cursor:"pointer",borderRadius:"0 0 12px 12px",marginBottom:8}}>⚠ Google session expired — tap to reconnect</div>}
 {tab==="dashboard"&&<Dashboard state={state} addEntry={addEntry} removeEntry={removeEntry} update={update} T={T} editMode={editMode}/>}
 {tab==="feeding"&&<Feeding state={state} addEntry={addEntry} removeEntry={removeEntry} T={T}/>}
 {tab==="sleep"&&<Sleep state={state} addEntry={addEntry} removeEntry={removeEntry} update={update} T={T}/>}
