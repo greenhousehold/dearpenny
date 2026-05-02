@@ -356,6 +356,7 @@ try{const{sheetId,url}=await gSheetsSync(state,state.gAccessToken);update("gShee
 setSyncing(false);
 };
 
+function SettingsTab({state,update,T}){
 return(<div>
 <SL T={T}>Baby details</SL><BabySetup state={state} update={update} T={T}/>
 <SL T={T}>Appearance</SL>
