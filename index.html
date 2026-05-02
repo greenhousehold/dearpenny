@@ -252,10 +252,13 @@ return()=>clearInterval(t);
 const removeEntry=useCallback((k,id)=>{
   setState(s=>{
     const next={...s,[k]:s[k].filter(e=>e.id!==id)};
-    if(syncRef.current.token&&syncRef.current.sheetId){
-      setTimeout(()=>gSheetsSync({...next,gSheetId:syncRef.current.sheetId},syncRef.current.token)
-        .then(()=>console.log("Sheet synced after delete"))
-        .catch(e=>console.warn("Sheet sync failed after delete:",e)),500);
+    const token=syncRef.current.token;
+    const sheetId=syncRef.current.sheetId;
+    if(token&&sheetId){
+      const syncState={...next,gSheetId:sheetId,gAccessToken:token};
+      setTimeout(()=>gSheetsSync(syncState,token)
+        .then(()=>console.log("✓ Sheet synced after delete"))
+        .catch(e=>console.warn("✗ Sheet sync failed:",e)),500);
     }
     return next;
   });
